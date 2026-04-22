@@ -31,7 +31,8 @@ def test_missing_expected_returns_unverified(sympy_verifier: SymPyVerifier) -> N
 
 
 def test_parse_error_handled_gracefully(sympy_verifier: SymPyVerifier) -> None:
-    result = sympy_verifier.check("this is not math !!", {"expected": "1"})
+    # Unbalanced parens are unambiguously unparseable across SymPy versions.
+    result = sympy_verifier.check("1 + + ))", {"expected": "1"})
     assert result.verified is False
 
 
