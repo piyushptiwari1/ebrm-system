@@ -7,6 +7,14 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ## [Unreleased]
 
 ### Added
+- Trackio integration in `benchmarks/runner.py` — pass `trackio_project="..."` to stream per-example correctness, running accuracy, and latency to a local or HF-Spaces-hosted [Trackio](https://github.com/gradio-app/trackio) dashboard. Opt-in, silently degrades when trackio is not installed.
+- `trackio>=0.2` added to the `[benchmark]` extra.
+- `tests/test_benchmarks_runner.py` covering happy path, solver errors, trackio integration (via monkeypatched module), and missing-trackio fallback.
+- `pythonpath = ["."]` in pytest config so `benchmarks/` imports resolve in tests.
+
+## [0.1.0] - 2026-04-22
+
+### Added
 - Initial public scaffold.
 - `ebrm_system.intent` — `Intent`, `IntentPrediction`, `Classifier` Protocol, `RuleBasedClassifier` with compute-budget policy.
 - `ebrm_system.verifiers` — `VerificationResult`, `Verifier` Protocol, `VerifierChain`; concrete `SymPyVerifier`, `ExecVerifier` (sandboxed subprocess), `RegexVerifier`.
@@ -19,7 +27,3 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Benchmark harness + GSM8K adapter.
 - Default YAML config.
 - Apache-2.0 license.
-
-## [0.1.0] - TBD
-
-- First PyPI release.

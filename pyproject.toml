@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ebrm-system"
-version = "0.1.0"
+version = "0.2.0"
 description = "EBRM System — a full reasoning pipeline with hierarchical latents, adaptive test-time compute, symbolic verification, and self-consistency voting."
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -55,6 +55,7 @@ benchmark = [
     "datasets>=2.20",
     "pandas>=2.2",
     "tqdm>=4.66",
+    "trackio>=0.2",
 ]
 
 [project.urls]
@@ -100,6 +101,7 @@ files = ["src/ebrm_system"]
 minversion = "8.0"
 addopts = "-ra --strict-markers --cov=ebrm_system --cov-report=term-missing"
 testpaths = ["tests"]
+pythonpath = ["."]
 markers = [
     "slow: slow tests (deselect with '-m not slow')",
     "gpu: tests requiring CUDA",
