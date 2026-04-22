@@ -1,0 +1,54 @@
+site_name: ebrm-system
+site_description: Energy-Based Reasoning Machine — production pipeline.
+site_url: https://piyushptiwari1.github.io/ebrm-system/
+repo_url: https://github.com/piyushptiwari1/ebrm-system
+repo_name: piyushptiwari1/ebrm-system
+edit_uri: edit/main/docs/
+
+theme:
+  name: material
+  features:
+    - content.code.copy
+    - content.code.annotate
+    - navigation.sections
+    - navigation.top
+    - search.suggest
+    - toc.follow
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to light mode
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Architecture: architecture.md
+  - Guide:
+      - Intent & routing: guide-intent.md
+      - Verifiers: guide-verifiers.md
+      - Voting: guide-voting.md
+  - API reference: api.md
+  - ADRs:
+      - ADR-001 Architecture: ../adr/ADR-001-architecture.md

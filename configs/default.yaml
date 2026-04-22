@@ -1,0 +1,37 @@
+# Default configuration for ebrm-system.
+# Override by passing `--config path/to/yaml` to the CLI (once supported)
+# or by loading this into `pydantic` models in code.
+
+intent:
+  classifier: rule_based        # rule_based | neural
+  # neural_model: path/to/classifier.pt
+
+inference:
+  langevin:
+    min_steps: 50
+    max_steps: 2000
+  restarts:
+    min: 1
+    max: 10
+  traces:
+    min: 1
+    max: 16
+
+verifiers:
+  chain:
+    - name: regex
+      enabled: false
+    - name: sympy
+      enabled: true
+      tolerance: 1.0e-6
+    - name: exec
+      enabled: false
+      timeout_s: 5.0
+
+voting:
+  numerical: true
+  tolerance: 1.0e-3
+  weight_by: inverse_energy     # uniform | confidence | inverse_energy
+
+logging:
+  level: INFO
