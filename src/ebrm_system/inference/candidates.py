@@ -8,15 +8,28 @@ them without depending on torch.
 
 The actual EBRM model is plugged in via a callable (``encode_fn``) so this
 module stays torch-optional and unit-testable on CPU with mocks.
+
+Warm-start retrieval
+--------------------
+Optionally, a :class:`~ebrm_system.reward.qjl_index.LatentIndex` can be passed
+in. When supplied, the first ``warmstart_k`` candidates are seeded from the
+top-k QJL-nearest cached solution latents instead of fresh Gaussian
+perturbations. This dramatically reduces the number of Langevin steps needed
+to reach a low-energy attractor for problems that resemble previously seen
+ones — the core idea behind retrieval-augmented self-consistency.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 import numpy as np
 from numpy.typing import NDArray
+
+if TYPE_CHECKING:
+    from ebrm_system.reward.qjl_index import LatentIndex
 
 LatentT = NDArray[np.float32]
 EnergyFn = Callable[[LatentT], float]
@@ -31,12 +44,20 @@ class CandidateConfig:
     step_size: float = 0.01
     noise_scale: float = 0.05
     seed: int = 0
+    warmstart_k: int = 0
+    """How many of ``num_candidates`` to seed from the latent index (if any).
+
+    Must satisfy 0 <= warmstart_k <= num_candidates. Set to 0 to disable
+    retrieval and fall back to pure Gaussian perturbation.
+    """
 
     def __post_init__(self) -> None:
         if self.num_candidates <= 0:
             raise ValueError("num_candidates must be positive")
         if self.num_steps < 0:
             raise ValueError("num_steps must be non-negative")
+        if self.warmstart_k < 0 or self.warmstart_k > self.num_candidates:
+            raise ValueError("warmstart_k must be in [0, num_candidates]")
 
 
 @dataclass(frozen=True)
@@ -46,6 +67,8 @@ class Candidate:
     latent: LatentT
     energy: float
     seed: int
+    warmstart: bool = False
+    """True if this candidate was seeded from the QJL latent index."""
 
 
 def langevin_step(
@@ -77,23 +100,43 @@ def generate_candidates(
     seed_latent: LatentT,
     energy_fn: EnergyFn,
     config: CandidateConfig | None = None,
+    index: LatentIndex | None = None,
 ) -> list[Candidate]:
     """Generate ``num_candidates`` independent low-energy latents.
 
     Each candidate starts from ``seed_latent`` plus a fresh Gaussian
     perturbation, then runs ``num_steps`` of Langevin dynamics.
+
+    If ``index`` is provided and ``config.warmstart_k > 0``, the first
+    ``warmstart_k`` candidates are seeded from the top-k QJL-nearest cached
+    latents (whose payloads must themselves be ``np.ndarray`` latents).
     """
     cfg = config or CandidateConfig()
     base_rng = np.random.default_rng(cfg.seed)
     candidates: list[Candidate] = []
 
-    for _ in range(cfg.num_candidates):
-        # Each candidate gets a deterministic but distinct sub-seed.
+    warm_seeds: list[LatentT] = []
+    if cfg.warmstart_k > 0 and index is not None and len(index) > 0:
+        results = index.search(seed_latent, k=cfg.warmstart_k)
+        for _sim, payload in results:
+            if isinstance(payload, np.ndarray) and payload.shape == seed_latent.shape:
+                warm_seeds.append(payload.astype(np.float32, copy=False))
+
+    for k in range(cfg.num_candidates):
         sub_seed = int(base_rng.integers(0, 2**31 - 1))
         rng = np.random.default_rng(sub_seed)
-        s = seed_latent + rng.standard_normal(seed_latent.shape, dtype=np.float32) * cfg.noise_scale
+        warm = k < len(warm_seeds)
+        base = warm_seeds[k] if warm else seed_latent
+        s = base + rng.standard_normal(seed_latent.shape, dtype=np.float32) * cfg.noise_scale
         for _ in range(cfg.num_steps):
             s = langevin_step(s, energy_fn, cfg.step_size, cfg.noise_scale, rng)
-        candidates.append(Candidate(latent=s, energy=float(energy_fn(s)), seed=sub_seed))
+        candidates.append(
+            Candidate(
+                latent=s,
+                energy=float(energy_fn(s)),
+                seed=sub_seed,
+                warmstart=warm,
+            )
+        )
 
     return sorted(candidates, key=lambda c: c.energy)
