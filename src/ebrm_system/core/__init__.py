@@ -11,6 +11,7 @@ and adapt them to the :data:`EncoderFn`, :data:`DecoderFn`, :data:`EnergyFn`
 contracts.
 """
 
+from ebrm_system.core.compute_profile import ComputeProfile, ScaledBudget, scale_budget
 from ebrm_system.core.reasoner import (
     DecoderFn,
     EncoderFn,
@@ -21,8 +22,15 @@ from ebrm_system.core.reasoner import (
     ReasoningResult,
     TraceItem,
 )
+from ebrm_system.core.refinement import (
+    RefinementConfig,
+    build_refined_question,
+    collect_critiques,
+    should_refine,
+)
 
 __all__ = [
+    "ComputeProfile",
     "DecoderFn",
     "EncoderFn",
     "EnergyFn",
@@ -30,5 +38,11 @@ __all__ = [
     "LatentCandidate",
     "ReasonerConfig",
     "ReasoningResult",
+    "RefinementConfig",
+    "ScaledBudget",
     "TraceItem",
+    "build_refined_question",
+    "collect_critiques",
+    "scale_budget",
+    "should_refine",
 ]
