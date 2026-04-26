@@ -4,6 +4,42 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-04-27
+
+### Added
+
+- **Verifier plane (per-intent hard checks)**
+  - `verifiers.lean.LeanVerifier` — Lean 4 subprocess wrapper for the math
+    lane. Gracefully degrades when `lean` is not on PATH.
+  - `verifiers.dri.DRIVerifier` — diagram-driven commutativity checker for the
+    advice/plan lane. Pure-Python `Diagram` / `ExactMorphism` /
+    `VectorMorphism` types.
+  - `verifiers.routing.chain_for_intent()` and `advice_chain()` —
+    intent-routed `VerifierChain` factory.
+
+- **Inference modules**
+  - `inference.candidates` — multi-seed Langevin generator with optional
+    `LatentIndex` warm-start retrieval.
+  - `inference.qjl` — 1-bit Johnson-Lindenstrauss projector (~96× compression,
+    < 0.1 cosine error at m=2048).
+  - `inference.turboquant_kv` — numpy reference for TurboQuant-style
+    Hadamard-rotated 2/4/8-bit KV-cache compression.
+  - `inference.torch_langevin` — autograd-based Langevin step (torch-optional).
+  - `inference.turboquant_attention` — torch SDPA over compressed KV
+    (torch-optional, torch.compile-friendly).
+
+- **Reward**
+  - `reward.qjl_index.LatentIndex` — bit-code latent ANN index.
+
+- **CLI**
+  - `ebrm-system verify-routed <query> <candidate>` — intent-routed verification.
+  - `ebrm-system verify-plan <diagram.json> <candidate.json>` — DRI plan check.
+
+### Internals
+
+- 120 tests (up from 53) · 93 % branch coverage · ruff strict + format ·
+  mypy strict.
+
 ## [Unreleased]
 
 ### Added
