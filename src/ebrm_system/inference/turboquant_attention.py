@@ -15,6 +15,7 @@ Module is torch-optional (matches :mod:`torch_langevin`).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import cast
 
 try:
     import torch
@@ -40,7 +41,7 @@ def _hadamard_matrix_torch(n: int, *, device: torch.device, dtype: torch.dtype) 
             ],
             dim=0,
         )
-    return h / (n**0.5)  # type: ignore[no-any-return]
+    return cast(Tensor, h / (n**0.5))
 
 
 @dataclass
