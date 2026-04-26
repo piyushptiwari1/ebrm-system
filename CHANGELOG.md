@@ -4,6 +4,40 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-04-27
+
+### Added
+
+- **Verification-and-refinement loop** (`ebrm_system.core.refinement`):
+  when the verifier chain rejects candidates, the rejection reasons are
+  collected as critiques, the question is re-rendered with those
+  critiques appended, and reasoning is run again. Verified candidates
+  from all rounds are pooled before voting. Disabled by default
+  (`RefinementConfig(max_rounds=0)`); set `max_rounds >= 1` to enable.
+  This is the IMO-2025-gold mechanism from arXiv:2507.15855.
+- **Difficulty-adaptive compute profile**
+  (`ebrm_system.core.compute_profile`): new `ComputeProfile` enum
+  (`ECONOMY`, `BALANCED`, `MAX_QUALITY`) plus `scale_budget()`. Economy
+  collapses easy questions (`difficulty < 0.3`) to N=1 greedy decoding;
+  Max-Quality doubles candidates and Langevin steps for hard questions
+  (`difficulty >= 0.5`). Balanced is a no-op. Wired into
+  `ReasonerConfig.compute_profile`.
+- **Free PRM training data** (`ebrm_system.reward.prm_data`):
+  `PRMRecord`, `make_records()`, `write_jsonl()`. Implements the
+  Athena-PRM / ThinkPRM weak-vs-strong agreement labelling: every
+  `solve()` call can dump per-candidate JSONL records with a
+  `strong_label` (the voted answer) and an `agreement` flag — reliable
+  pseudo-labels for fine-tuning a generative PRM with no human
+  annotation. References ACL 2025 "Lessons of PRMs" and Athena-PRM.
+- `ReasoningResult.details` now carries `compute_profile`, the actual
+  scaled `budget`, and `refinement_rounds` for full audit.
+
+### Changed
+
+- `HierarchicalLatentReasoner.solve()` is now a thin orchestration loop
+  over a per-round helper `_reason_once()` for cleanly separating
+  encode→generate→decode→verify from the new pooling/refinement logic.
+
 ## [0.5.0] - 2026-04-27
 
 ### Added

@@ -31,6 +31,17 @@ from typing import TYPE_CHECKING
 import numpy as np
 from numpy.typing import NDArray
 
+from ebrm_system.core.compute_profile import (
+    ComputeProfile,
+    ScaledBudget,
+    scale_budget,
+)
+from ebrm_system.core.refinement import (
+    RefinementConfig,
+    build_refined_question,
+    collect_critiques,
+    should_refine,
+)
 from ebrm_system.inference.candidates import (
     Candidate as LatentCandidate,
 )
@@ -39,7 +50,7 @@ from ebrm_system.inference.candidates import (
     generate_candidates,
 )
 from ebrm_system.intent import Classifier, IntentPrediction, RuleBasedClassifier
-from ebrm_system.verifiers.base import VerificationResult
+from ebrm_system.verifiers.base import VerificationResult, VerifierChain
 from ebrm_system.verifiers.routing import chain_for_intent
 from ebrm_system.voting import SelfConsistencyVoter, VoteResult
 from ebrm_system.voting.voter import Candidate as VoteCandidate
@@ -99,6 +110,10 @@ class ReasonerConfig:
     pipeline never returns empty.
     """
     seed: int = 0
+    compute_profile: ComputeProfile = ComputeProfile.BALANCED
+    """Auto-scale candidate count / Langevin steps by question difficulty."""
+    refinement: RefinementConfig = field(default_factory=RefinementConfig)
+    """Verification-and-refinement loop (disabled when ``max_rounds == 0``)."""
 
 
 class HierarchicalLatentReasoner:
@@ -146,24 +161,101 @@ class HierarchicalLatentReasoner:
         self.config = config or ReasonerConfig()
 
     def solve(self, question: str) -> ReasoningResult:
-        """Run the full hierarchical reasoning pipeline on one question."""
-        # Level 0: intent + budget
+        """Run the full hierarchical reasoning pipeline on one question.
+
+        When :attr:`ReasonerConfig.refinement` enables refinement and the
+        first pass fails to verify enough candidates, the question is
+        re-encoded with appended verifier critiques and reasoning is run
+        again. Verified candidates from all rounds are pooled before voting.
+        """
         prediction = self.classifier.classify(question)
+        budget = scale_budget(prediction, self.config.compute_profile)
 
-        # Level 1: encode
-        seed_latent = self._as_float32(self.encoder(question))
+        # Round 0
+        traces, chain = self._reason_once(question, prediction, budget, seed_offset=0)
+        n_rounds = 1
+        all_traces: list[TraceItem] = list(traces)
 
-        # Level 2: candidate generation
-        cand_cfg = CandidateConfig(
-            num_candidates=prediction.suggested_trace_count,
-            num_steps=prediction.suggested_langevin_steps,
-            warmstart_k=min(
-                prediction.suggested_restarts,
-                prediction.suggested_trace_count,
+        # Verification-and-refinement (arXiv:2507.15855)
+        for round_idx in range(self.config.refinement.max_rounds):
+            verified_fraction = self._verified_fraction(all_traces, chain)
+            critiques = collect_critiques(
+                [list(t.verifier_results) for t in all_traces if not t.verified],
+                max_critiques=self.config.refinement.max_critiques,
             )
-            if self.index is not None
-            else 0,
-            seed=self.config.seed,
+            if not should_refine(verified_fraction, critiques, self.config.refinement):
+                break
+            refined_q = build_refined_question(question, critiques, self.config.refinement)
+            refined_pred = self.classifier.classify(refined_q)
+            refined_budget = scale_budget(refined_pred, self.config.compute_profile)
+            extra_traces, _ = self._reason_once(
+                refined_q,
+                refined_pred,
+                refined_budget,
+                seed_offset=(round_idx + 1) * 1009,
+            )
+            all_traces.extend(extra_traces)
+            n_rounds += 1
+
+        # Vote over the (possibly enlarged) trace pool
+        pool = self._select_voting_pool(all_traces)
+        vote_candidates = [
+            VoteCandidate(answer=t.answer, energy=t.energy, trace_id=t.seed) for t in pool
+        ]
+        voter = SelfConsistencyVoter(
+            numerical=self.config.numerical_tolerance is not None,
+            tolerance=self.config.numerical_tolerance or 1e-6,
+            weight_by=self.config.weight_by,
+        )
+        vote = voter.vote(vote_candidates)
+
+        verified_fraction = self._verified_fraction(all_traces, chain)
+        details: dict[str, object] = {
+            "intent": prediction.intent.value,
+            "difficulty": prediction.difficulty,
+            "n_candidates": len(all_traces),
+            "n_warmstart": sum(1 for t in all_traces if t.warmstart),
+            "voting_pool": "verified" if pool is not all_traces else "all",
+            "compute_profile": self.config.compute_profile.value,
+            "budget": {
+                "num_candidates": budget.num_candidates,
+                "num_steps": budget.num_steps,
+                "num_restarts": budget.num_restarts,
+            },
+            "refinement_rounds": n_rounds - 1,
+        }
+        return ReasoningResult(
+            answer=vote.answer,
+            intent=prediction,
+            vote=vote,
+            traces=tuple(all_traces),
+            verified_fraction=verified_fraction,
+            details=details,
+        )
+
+    # -- pipeline core (one round) ---------------------------------------
+
+    def _reason_once(
+        self,
+        question: str,
+        prediction: IntentPrediction,
+        budget: ScaledBudget,
+        *,
+        seed_offset: int,
+    ) -> tuple[list[TraceItem], VerifierChain]:
+        """Run encode → generate → decode → verify exactly once.
+
+        Returns ``(traces, chain)``. The chain is returned so the caller can
+        check whether verifiers were available for the routed intent.
+        """
+        seed_latent = self._as_float32(self.encoder(question))
+        cand_cfg = CandidateConfig(
+            num_candidates=budget.num_candidates,
+            num_steps=budget.num_steps,
+            warmstart_k=(
+                min(budget.num_restarts, budget.num_candidates) if self.index is not None else 0
+            ),
+            seed=self.config.seed + seed_offset,
         )
         latent_candidates = generate_candidates(
             seed_latent,
@@ -171,19 +263,12 @@ class HierarchicalLatentReasoner:
             config=cand_cfg,
             index=self.index,
         )
-
-        # Level 3: decode + verify
         chain = chain_for_intent(prediction.intent)
         traces: list[TraceItem] = []
-        n_verified = 0
         for lc in latent_candidates:
             answer = self.decoder(lc.latent)
             results = chain.verify(answer) if chain.verifiers else []
-            ok = bool(results) and chain.all_passed(results)
-            if not chain.verifiers:
-                ok = False  # cannot claim verification when chain is empty
-            else:
-                n_verified += int(ok)
+            ok = bool(chain.verifiers) and bool(results) and chain.all_passed(results)
             traces.append(
                 TraceItem(
                     latent=lc.latent,
@@ -195,35 +280,13 @@ class HierarchicalLatentReasoner:
                     verifier_results=tuple(results),
                 )
             )
+        return traces, chain
 
-        # Level 4: vote
-        pool = self._select_voting_pool(traces)
-        vote_candidates = [
-            VoteCandidate(answer=t.answer, energy=t.energy, trace_id=t.seed) for t in pool
-        ]
-        voter = SelfConsistencyVoter(
-            numerical=self.config.numerical_tolerance is not None,
-            tolerance=self.config.numerical_tolerance or 1e-6,
-            weight_by=self.config.weight_by,
-        )
-        vote = voter.vote(vote_candidates)
-
-        verified_fraction = (n_verified / len(traces)) if traces and chain.verifiers else 0.0
-        details: dict[str, object] = {
-            "intent": prediction.intent.value,
-            "difficulty": prediction.difficulty,
-            "n_candidates": len(traces),
-            "n_warmstart": sum(1 for t in traces if t.warmstart),
-            "voting_pool": "verified" if pool is not traces else "all",
-        }
-        return ReasoningResult(
-            answer=vote.answer,
-            intent=prediction,
-            vote=vote,
-            traces=tuple(traces),
-            verified_fraction=verified_fraction,
-            details=details,
-        )
+    @staticmethod
+    def _verified_fraction(traces: list[TraceItem], chain: VerifierChain) -> float:
+        if not traces or not chain.verifiers:
+            return 0.0
+        return sum(1 for t in traces if t.verified) / len(traces)
 
     # -- internals --------------------------------------------------------
 
