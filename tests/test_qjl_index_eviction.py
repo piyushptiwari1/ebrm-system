@@ -1,4 +1,5 @@
 """Tests for bounded LatentIndex with eviction (LRU + FIFO)."""
+
 from __future__ import annotations
 
 import numpy as np
