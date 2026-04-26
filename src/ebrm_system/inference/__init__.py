@@ -1,9 +1,11 @@
 """Inference orchestration — adaptive Langevin with budget controller.
 
 v3 modules:
-    * ``candidates``     — multi-seed Langevin candidate generator.
+    * ``candidates``     — multi-seed Langevin candidate generator (numpy).
     * ``qjl``            — 1-bit Johnson-Lindenstrauss projector.
     * ``turboquant_kv``  — TurboQuant-style KV-cache compressor.
+    * ``torch_langevin`` — autograd-based Langevin step (torch-optional;
+                           import directly when torch is available).
 """
 
 from ebrm_system.inference.candidates import (
