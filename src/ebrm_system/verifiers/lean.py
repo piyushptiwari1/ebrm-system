@@ -24,7 +24,6 @@ import shutil
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any
 
 from ebrm_system.verifiers.base import VerificationResult
 
@@ -51,9 +50,17 @@ class LeanVerifier:
         return shutil.which(self.lean_bin)
 
     def check(
-        self, candidate: str, context: dict[str, Any] | None = None
+        self, candidate: object, context: dict[str, object] | None = None
     ) -> VerificationResult:
         del context  # Lean header is provided via constructor; context unused for now.
+        if not isinstance(candidate, str):
+            return VerificationResult(
+                verifier=self.name,
+                verified=False,
+                confidence=0.0,
+                reason="LeanVerifier expects a string candidate",
+                evidence={"got_type": type(candidate).__name__},
+            )
         binary = self._resolve_binary()
         if binary is None:
             return VerificationResult(

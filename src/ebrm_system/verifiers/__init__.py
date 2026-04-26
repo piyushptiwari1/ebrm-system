@@ -12,6 +12,7 @@ from ebrm_system.verifiers.dri import (
 from ebrm_system.verifiers.exec_verifier import ExecVerifier
 from ebrm_system.verifiers.lean import LeanVerifier
 from ebrm_system.verifiers.regex_verifier import RegexVerifier
+from ebrm_system.verifiers.routing import advice_chain, chain_for_intent
 from ebrm_system.verifiers.sympy_verifier import SymPyVerifier
 
 __all__ = [
@@ -27,5 +28,7 @@ __all__ = [
     "VerificationResult",
     "Verifier",
     "VerifierChain",
+    "advice_chain",
+    "chain_for_intent",
     "commutes",
 ]

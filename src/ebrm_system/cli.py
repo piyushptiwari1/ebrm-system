@@ -8,7 +8,7 @@ from rich.table import Table
 
 from ebrm_system import __version__
 from ebrm_system.intent import RuleBasedClassifier
-from ebrm_system.verifiers import SymPyVerifier, VerifierChain
+from ebrm_system.verifiers import SymPyVerifier, VerifierChain, chain_for_intent
 
 app = typer.Typer(
     name="ebrm-system",
@@ -50,6 +50,30 @@ def verify(
     """Run the SymPy verifier on a candidate/expected pair."""
     chain = VerifierChain([SymPyVerifier()])
     results = chain.verify(candidate, {"expected": expected})
+    for r in results:
+        status = "[green]PASS[/green]" if r.verified else "[red]FAIL[/red]"
+        console.print(f"{status} [{r.verifier}] {r.reason}")
+
+
+@app.command("verify-routed")
+def verify_routed(
+    query: str = typer.Argument(..., help="Original user query (used for intent routing)"),
+    candidate: str = typer.Argument(..., help="Candidate answer to verify"),
+    expected: str = typer.Option("", "--expected", help="Expected value for math chains"),
+) -> None:
+    """Classify the query, then run the intent-routed verifier chain."""
+    clf = RuleBasedClassifier()
+    pred = clf.classify(query)
+    chain = chain_for_intent(pred.intent)
+    if not chain.verifiers:
+        console.print(
+            f"[yellow]intent={pred.intent.value}: no hard verifiers; "
+            f"EBRM soft score only.[/yellow]"
+        )
+        return
+    context: dict[str, object] = {"expected": expected} if expected else {}
+    results = chain.verify(candidate, context)
+    console.print(f"[cyan]intent={pred.intent.value}[/cyan]")
     for r in results:
         status = "[green]PASS[/green]" if r.verified else "[red]FAIL[/red]"
         console.print(f"{status} [{r.verifier}] {r.reason}")

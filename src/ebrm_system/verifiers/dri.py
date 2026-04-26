@@ -175,7 +175,7 @@ class DRIVerifier:
         self.cosine_threshold = cosine_threshold
 
     def check(
-        self, candidate: str, context: dict[str, Any] | None = None
+        self, candidate: object, context: dict[str, object] | None = None
     ) -> VerificationResult:
         if context is None or "diagram" not in context:
             return VerificationResult(
@@ -193,6 +193,14 @@ class DRIVerifier:
                 confidence=0.0,
                 reason="context['diagram'] must be a Diagram",
                 evidence={"got_type": type(diagram).__name__},
+            )
+        if not isinstance(candidate, str):
+            return VerificationResult(
+                verifier=self.name,
+                verified=False,
+                confidence=0.0,
+                reason="DRIVerifier expects a JSON string candidate",
+                evidence={"got_type": type(candidate).__name__},
             )
 
         try:
