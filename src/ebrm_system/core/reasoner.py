@@ -59,6 +59,7 @@ from ebrm_system.inference.latent_recursion import (
     gradient_step,
     recurse_latent,
 )
+from ebrm_system.inference.mcts import MCTSConfig, mcts_select
 from ebrm_system.intent import Classifier, IntentPrediction, RuleBasedClassifier
 from ebrm_system.verifiers.base import VerificationResult, VerifierChain
 from ebrm_system.verifiers.routing import chain_for_intent
@@ -141,6 +142,16 @@ class ReasonerConfig:
     Reference: Coconut (arXiv:2412.06769), recurrent-depth (OpenReview
     D6o6Bwtq7h), LatentSeek.
     """
+    mcts: MCTSConfig | None = None
+    """ReST-MCTS*-style search over the candidate pool before voting.
+
+    ``None`` disables it. When set, the candidate pool (post diverse
+    selection if any) is re-ranked by UCB1-driven MCTS with a value
+    function. By default the value function maps each candidate's energy
+    into ``[0, 1]`` (lower energy → higher value), but callers can supply
+    their own ``mcts_value_fn`` for PRM-guided search.
+    Reference: ReST-MCTS* (arXiv:2406.03816), AlphaProof.
+    """
 
 
 class HierarchicalLatentReasoner:
@@ -180,6 +191,7 @@ class HierarchicalLatentReasoner:
         index: LatentIndex | None = None,
         config: ReasonerConfig | None = None,
         recursion_step_fn: StepFn | None = None,
+        mcts_value_fn: Callable[[TraceItem], float] | None = None,
     ) -> None:
         self.encoder = encoder
         self.decoder = decoder
@@ -188,6 +200,7 @@ class HierarchicalLatentReasoner:
         self.index = index
         self.config = config or ReasonerConfig()
         self.recursion_step_fn = recursion_step_fn
+        self.mcts_value_fn = mcts_value_fn
 
     def solve(self, question: str) -> ReasoningResult:
         """Run the full hierarchical reasoning pipeline on one question.
@@ -230,6 +243,7 @@ class HierarchicalLatentReasoner:
         pool = self._select_voting_pool(all_traces)
         n_pre_diverse = len(pool)
         pool = self._apply_diverse_selection(pool)
+        pool = self._apply_mcts(pool)
         vote_candidates = [
             VoteCandidate(answer=t.answer, energy=t.energy, trace_id=t.seed) for t in pool
         ]
@@ -260,6 +274,7 @@ class HierarchicalLatentReasoner:
                 else None
             ),
             "latent_recursion": getattr(self, "_last_recursion", None),
+            "mcts": getattr(self, "_last_mcts", None),
         }
         return ReasoningResult(
             answer=vote.answer,
@@ -345,6 +360,48 @@ class HierarchicalLatentReasoner:
             config=cfg,
         )
         return [traces[i] for i in survivors]
+
+    def _apply_mcts(self, traces: list[TraceItem]) -> list[TraceItem]:
+        """Re-rank candidates with ReST-MCTS* (no-op if disabled).
+
+        The default value function maps each trace's energy into ``[0, 1]``
+        via ``1 / (1 + energy_relative_to_min)`` so that the lowest-energy
+        candidate maps to ``1.0``. Callers can override by passing
+        ``mcts_value_fn`` (TraceItem -> float in [0, 1]) at construction.
+
+        Stores audit info at ``self._last_mcts`` so ``solve()`` can surface
+        it in :attr:`ReasoningResult.details`.
+        """
+        cfg = self.config.mcts
+        if cfg is None or len(traces) <= 1:
+            self._last_mcts = None
+            return traces
+        if self.mcts_value_fn is not None:
+            value_fn = self.mcts_value_fn
+
+            def _vfn(i: int) -> float:
+                return float(value_fn(traces[i]))
+        else:
+            energies = np.array([t.energy for t in traces], dtype=np.float64)
+            e_min = float(energies.min())
+
+            def _vfn(i: int) -> float:
+                # Lower energy -> higher value; scale-invariant.
+                return float(1.0 / (1.0 + (traces[i].energy - e_min)))
+
+        result = mcts_select(
+            [t.latent for t in traces],
+            _vfn,
+            config=cfg,
+        )
+        self._last_mcts = {
+            "simulations_run": result.simulations_run,
+            "top_visits": result.visits[:3],
+            "top_values": result.values[:3],
+            "pool_size": len(traces),
+        }
+        # MCTS output is a strict permutation; honour it order-preservingly.
+        return [traces[i] for i in result.ranking]
 
     def _maybe_recurse_latent(self, seed_latent: LatentT) -> LatentT:
         """Apply Coconut-style latent recursion to the seed (no-op if disabled).
