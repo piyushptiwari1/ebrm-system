@@ -51,4 +51,4 @@ nav:
       - Voting: guide-voting.md
   - API reference: api.md
   - ADRs:
-      - ADR-001 Architecture: ../adr/ADR-001-architecture.md
+      - ADR-001 Architecture: adr-001-architecture.md
