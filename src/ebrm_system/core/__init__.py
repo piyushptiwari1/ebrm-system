@@ -37,6 +37,11 @@ from ebrm_system.inference.latent_recursion import (
     RecursionResult,
     recurse_latent,
 )
+from ebrm_system.inference.mcts import (
+    MCTSConfig,
+    MCTSResult,
+    mcts_select,
+)
 
 __all__ = [
     "ComputeProfile",
@@ -46,6 +51,8 @@ __all__ = [
     "EnergyFn",
     "HierarchicalLatentReasoner",
     "LatentCandidate",
+    "MCTSConfig",
+    "MCTSResult",
     "ReasonerConfig",
     "ReasoningResult",
     "RecursionConfig",
@@ -55,6 +62,7 @@ __all__ = [
     "TraceItem",
     "build_refined_question",
     "collect_critiques",
+    "mcts_select",
     "recurse_latent",
     "scale_budget",
     "select_diverse",

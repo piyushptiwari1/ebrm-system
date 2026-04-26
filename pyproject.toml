@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ebrm-system"
-version = "0.9.0"
+version = "0.10.0"
 description = "EBRM System — a full reasoning pipeline with hierarchical latents, adaptive test-time compute, symbolic verification, and self-consistency voting."
 readme = "README.md"
 license = { text = "Apache-2.0" }

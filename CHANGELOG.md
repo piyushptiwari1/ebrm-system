@@ -4,6 +4,24 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-04-27
+
+### Added
+
+- **ReST-MCTS\*-style search** (`ebrm_system.inference.mcts`): UCB1-driven
+  Monte Carlo Tree Search over the candidate pool, re-ranking under a
+  fixed `num_simulations` value-function budget. Tree shape is shallow
+  (root → DVTS-style clusters → candidates) and pure-Python + NumPy.
+  Disabled by default; opt in via `ReasonerConfig.mcts = MCTSConfig(...)`.
+  The default value function maps each candidate's energy into `[0, 1]`;
+  pass `mcts_value_fn=...` at construction to plug in a PRM-guided value
+  (ThinkPRM, Athena-PRM, or any callable returning `[0, 1]`).
+  Audit (`simulations_run`, `top_visits`, `top_values`, `pool_size`) is
+  surfaced in `ReasoningResult.details["mcts"]`.
+  References: ReST-MCTS\* (arXiv:2406.03816), AlphaProof.
+- 14 new tests (8 module + 3 integration + reuse). Suite now 257 tests,
+  96% coverage.
+
 ## [0.9.0] - 2026-04-27
 
 ### Added

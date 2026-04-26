@@ -24,6 +24,11 @@ from ebrm_system.inference.latent_recursion import (
     gradient_step,
     recurse_latent,
 )
+from ebrm_system.inference.mcts import (
+    MCTSConfig,
+    MCTSResult,
+    mcts_select,
+)
 from ebrm_system.inference.qjl import QJLConfig, QJLProjector
 from ebrm_system.inference.turboquant_kv import (
     CompressedKV,
@@ -38,6 +43,8 @@ __all__ = [
     "DiverseSelectionConfig",
     "KVCacheCompressor",
     "KVQuantConfig",
+    "MCTSConfig",
+    "MCTSResult",
     "QJLConfig",
     "QJLProjector",
     "RecursionConfig",
@@ -45,6 +52,7 @@ __all__ = [
     "generate_candidates",
     "gradient_step",
     "langevin_step",
+    "mcts_select",
     "recurse_latent",
     "select_diverse",
 ]
