@@ -2,13 +2,25 @@
 
 from __future__ import annotations
 
+import json
+from pathlib import Path
+from typing import cast
+
 import typer
 from rich.console import Console
 from rich.table import Table
 
 from ebrm_system import __version__
 from ebrm_system.intent import RuleBasedClassifier
-from ebrm_system.verifiers import SymPyVerifier, VerifierChain, chain_for_intent
+from ebrm_system.verifiers import (
+    Diagram,
+    ExactMorphism,
+    Morphism,
+    SymPyVerifier,
+    VerifierChain,
+    advice_chain,
+    chain_for_intent,
+)
 
 app = typer.Typer(
     name="ebrm-system",
@@ -73,6 +85,70 @@ def verify_routed(
     context: dict[str, object] = {"expected": expected} if expected else {}
     results = chain.verify(candidate, context)
     console.print(f"[cyan]intent={pred.intent.value}[/cyan]")
+    for r in results:
+        status = "[green]PASS[/green]" if r.verified else "[red]FAIL[/red]"
+        console.print(f"{status} [{r.verifier}] {r.reason}")
+
+
+def _load_diagram_from_json(path: Path) -> Diagram:
+    """Load a Diagram from a JSON spec.
+
+    Spec format::
+
+        {
+          "morphisms": [
+            {"name": "f", "src": "a", "dst": "b", "op": "upper"},
+            {"name": "g", "src": "b", "dst": "c", "op": "strip"}
+          ]
+        }
+
+    Supported ``op`` values are simple stateless string transforms safe to
+    invoke from user-supplied JSON: ``upper``, ``lower``, ``strip``,
+    ``identity``, ``split``, ``reverse``. Custom morphisms must be wired in
+    Python — the CLI is intentionally restricted.
+    """
+    spec = json.loads(path.read_text(encoding="utf-8"))
+    ops = {
+        "upper": lambda x: x.upper() if isinstance(x, str) else x,
+        "lower": lambda x: x.lower() if isinstance(x, str) else x,
+        "strip": lambda x: x.strip() if isinstance(x, str) else x,
+        "identity": lambda x: x,
+        "split": lambda x: x.split() if isinstance(x, str) else x,
+        "reverse": lambda x: x[::-1],
+    }
+    diagram = Diagram()
+    for m in spec.get("morphisms", []):
+        op_name = m["op"]
+        if op_name not in ops:
+            raise ValueError(f"unsupported op {op_name!r}; choose from {sorted(ops)}")
+        diagram.add(
+            cast(
+                Morphism,
+                ExactMorphism(name=m["name"], src=m["src"], dst=m["dst"], fn=ops[op_name]),
+            )
+        )
+    return diagram
+
+
+@app.command("verify-plan")
+def verify_plan(
+    diagram_path: Path = typer.Argument(  # noqa: B008
+        ..., exists=True, readable=True, help="Path to diagram JSON spec"
+    ),
+    candidate_path: Path = typer.Argument(  # noqa: B008
+        ..., exists=True, readable=True, help="Path to candidate JSON ({initial, paths})"
+    ),
+) -> None:
+    """Run the DRI commutativity verifier on a candidate plan.
+
+    The diagram defines the morphisms. The candidate names the paths to
+    compare. The verifier checks that all paths produce the same final
+    value from ``initial``.
+    """
+    diagram = _load_diagram_from_json(diagram_path)
+    candidate = candidate_path.read_text(encoding="utf-8")
+    chain = advice_chain()
+    results = chain.verify(candidate, {"diagram": diagram})
     for r in results:
         status = "[green]PASS[/green]" if r.verified else "[red]FAIL[/red]"
         console.print(f"{status} [{r.verifier}] {r.reason}")
