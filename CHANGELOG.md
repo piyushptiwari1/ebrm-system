@@ -4,6 +4,26 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.13.0] - 2026-04-27
+
+### Added
+
+- **LongMemEval-style benchmark harness** (`benchmarks.longmemeval`):
+  end-to-end validation of `TieredMemory` on the five canonical question
+  types from LongMemEval (single-session-user, single-session-assistant,
+  multi-session, temporal-reasoning, knowledge-update). Ships a
+  deterministic synthetic generator (`synth_longmemeval`) so the harness
+  runs in CI without the gated dataset; drop in real episodes via the
+  `LongMemEpisode` schema when you have access.
+  - `MemoryFact` schema with `superseded_by` to model knowledge updates.
+  - `LongMemRunResult` reports per-type accuracy, useful for tuning
+    promotion thresholds and TTLs.
+  - `default_memory()` helper returns a sensibly-tuned `TieredMemory`
+    for science runs.
+  - `hash_embed()` torch-free deterministic projector for harness self-
+    tests; swap in your real projector when running for science.
+- 14 new tests; suite now 279 tests, 96% coverage.
+
 ## [0.12.0] - 2026-04-27
 
 ### Added
