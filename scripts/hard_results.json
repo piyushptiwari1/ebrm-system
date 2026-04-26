@@ -1,0 +1,149 @@
+{
+  "model": "Qwen/Qwen3-4B",
+  "n_items": 8,
+  "n_candidates": 32,
+  "baseline_accuracy": 0.75,
+  "ebrm_accuracy": 1.0,
+  "lift": 0.25,
+  "per_item": [
+    {
+      "tag": "gsm-hard",
+      "question": "A factory produces 14,357 widgets per day. After 23 days of production, they ship 198,432 widgets to a buyer. How many widgets remain in stock?",
+      "gold": "131779",
+      "baseline_pred": "131779",
+      "baseline_correct": true,
+      "baseline_latency_s": 18.07,
+      "ebrm_pred": "131779",
+      "ebrm_correct": true,
+      "ebrm_latency_s": 72.27,
+      "ebrm_vote_distribution": {
+        "131779": 11,
+        "1317": 4,
+        "13": 4,
+        "1": 3,
+        "2": 2
+      }
+    },
+    {
+      "tag": "red-herring",
+      "question": "Liam has 5 apples. He gives 2 to his sister, who is 7 years old and lives next door. He then buys 3 more apples and eats 1. How many apples does Liam have now?",
+      "gold": "5",
+      "baseline_pred": "5",
+      "baseline_correct": true,
+      "baseline_latency_s": 17.66,
+      "ebrm_pred": "5",
+      "ebrm_correct": true,
+      "ebrm_latency_s": 72.26,
+      "ebrm_vote_distribution": {
+        "5": 30,
+        "3": 2
+      }
+    },
+    {
+      "tag": "ooo-trap",
+      "question": "A store sells pens in packs of 12 for $8 and pencils in packs of 20 for $5. If I buy 3 pen packs and 4 pencil packs, then return 1 pen pack for a refund, how much did I spend in total (in dollars)?",
+      "gold": "36",
+      "baseline_pred": "36",
+      "baseline_correct": true,
+      "baseline_latency_s": 17.63,
+      "ebrm_pred": "36",
+      "ebrm_correct": true,
+      "ebrm_latency_s": 75.5,
+      "ebrm_vote_distribution": {
+        "36": 23,
+        "3": 5,
+        "8": 2,
+        "24": 1,
+        "44": 1
+      }
+    },
+    {
+      "tag": "sign",
+      "question": "A submarine is at depth 250 m below sea level. It rises 80 m, then dives another 410 m. What is its final depth in metres below sea level (use a positive number for depth below sea level)?",
+      "gold": "580",
+      "baseline_pred": "580",
+      "baseline_correct": true,
+      "baseline_latency_s": 17.67,
+      "ebrm_pred": "580",
+      "ebrm_correct": true,
+      "ebrm_latency_s": 74.02,
+      "ebrm_vote_distribution": {
+        "580": 16,
+        "58": 5,
+        "410": 2,
+        "5": 2,
+        "4": 1
+      }
+    },
+    {
+      "tag": "apple-symbolic",
+      "question": "Oliver picks 44 pears on Friday and 58 pears on Saturday. On Sunday he picks twice as many pears as on Friday, but five of the pears on Sunday are smaller than average. How many pears does Oliver have in total?",
+      "gold": "190",
+      "baseline_pred": "190",
+      "baseline_correct": true,
+      "baseline_latency_s": 17.67,
+      "ebrm_pred": "190",
+      "ebrm_correct": true,
+      "ebrm_latency_s": 74.8,
+      "ebrm_vote_distribution": {
+        "190": 19,
+        "19": 5,
+        "1": 4,
+        "88": 2,
+        "180": 1
+      }
+    },
+    {
+      "tag": "percent",
+      "question": "An item costs $200. It is discounted by 25%, then a 10% sales tax is applied to the discounted price. What is the final price in dollars?",
+      "gold": "165",
+      "baseline_pred": "200",
+      "baseline_correct": false,
+      "baseline_latency_s": 17.7,
+      "ebrm_pred": "165",
+      "ebrm_correct": true,
+      "ebrm_latency_s": 71.79,
+      "ebrm_vote_distribution": {
+        "165": 14,
+        "16": 6,
+        "1": 5,
+        "25": 2,
+        "2": 2
+      }
+    },
+    {
+      "tag": "set",
+      "question": "In a class of 40 students, 22 play soccer, 18 play basketball, and 7 play both. How many students play neither sport?",
+      "gold": "7",
+      "baseline_pred": "18",
+      "baseline_correct": false,
+      "baseline_latency_s": 17.62,
+      "ebrm_pred": "7",
+      "ebrm_correct": true,
+      "ebrm_latency_s": 70.81,
+      "ebrm_vote_distribution": {
+        "7": 29,
+        "11": 2,
+        "3": 1
+      }
+    },
+    {
+      "tag": "rate",
+      "question": "Tap A fills a tank in 6 hours. Tap B fills the same tank in 4 hours. If both taps are open together, how many hours does it take to fill the tank? (Round to two decimal places.)",
+      "gold": "2.40",
+      "baseline_pred": "2.4",
+      "baseline_correct": true,
+      "baseline_latency_s": 17.58,
+      "ebrm_pred": "2.4",
+      "ebrm_correct": true,
+      "ebrm_latency_s": 73.31,
+      "ebrm_vote_distribution": {
+        "2.4": 17,
+        "2": 3,
+        "12": 3,
+        "6": 2,
+        "3": 2
+      }
+    }
+  ]
+}
