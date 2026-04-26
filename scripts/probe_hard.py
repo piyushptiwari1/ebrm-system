@@ -11,6 +11,7 @@ We run Qwen3-4B with two configurations and report side-by-side accuracy:
   B. ebrm-system : 32 samples, self-consistency majority vote (no SymPy gating
                    since these items have non-trivial answers; we just count votes)
 """
+
 from __future__ import annotations
 
 import json
@@ -88,7 +89,7 @@ HARD_ITEMS = [
         "Tap A fills a tank in 6 hours. Tap B fills the same tank in 4 hours. "
         "If both taps are open together, how many hours does it take to fill "
         "the tank? (Round to two decimal places.)",
-        f"{1 / (1/6 + 1/4):.2f}",  # 2.40
+        f"{1 / (1 / 6 + 1 / 4):.2f}",  # 2.40
         "rate",
     ),
 ]
@@ -139,7 +140,7 @@ def generate(model, tok, prompt: str, n: int) -> tuple[list[str], float]:
             pad_token_id=tok.eos_token_id,
         )
     latency = time.time() - t0
-    gen = out[:, enc["input_ids"].shape[1]:]
+    gen = out[:, enc["input_ids"].shape[1] :]
     return tok.batch_decode(gen, skip_special_tokens=True), latency
 
 
@@ -148,9 +149,7 @@ def main() -> None:
     tok = AutoTokenizer.from_pretrained(MODEL_ID)
     if tok.pad_token is None:
         tok.pad_token = tok.eos_token
-    model = AutoModelForCausalLM.from_pretrained(
-        MODEL_ID, dtype=torch.float16, device_map=DEVICE
-    )
+    model = AutoModelForCausalLM.from_pretrained(MODEL_ID, dtype=torch.float16, device_map=DEVICE)
     model.eval()
 
     results = []
@@ -179,23 +178,25 @@ def main() -> None:
         ebrm_correct += int(e_ok)
 
         print(
-            f"[{i+1}/{len(HARD_ITEMS)}] {tag:>14}  gold={gold:<10} "
+            f"[{i + 1}/{len(HARD_ITEMS)}] {tag:>14}  gold={gold:<10} "
             f"base={b_pred:<10} {'✓' if b_ok else '✗'}   "
             f"ebrm32={e_pred:<10} {'✓' if e_ok else '✗'}   "
             f"({b_lat:.1f}s / {e_lat:.1f}s)"
         )
-        results.append({
-            "tag": tag,
-            "question": q,
-            "gold": gold,
-            "baseline_pred": b_pred,
-            "baseline_correct": b_ok,
-            "baseline_latency_s": round(b_lat, 2),
-            "ebrm_pred": e_pred,
-            "ebrm_correct": e_ok,
-            "ebrm_latency_s": round(e_lat, 2),
-            "ebrm_vote_distribution": dict(Counter(votes_nz).most_common(5)),
-        })
+        results.append(
+            {
+                "tag": tag,
+                "question": q,
+                "gold": gold,
+                "baseline_pred": b_pred,
+                "baseline_correct": b_ok,
+                "baseline_latency_s": round(b_lat, 2),
+                "ebrm_pred": e_pred,
+                "ebrm_correct": e_ok,
+                "ebrm_latency_s": round(e_lat, 2),
+                "ebrm_vote_distribution": dict(Counter(votes_nz).most_common(5)),
+            }
+        )
 
     n = len(HARD_ITEMS)
     summary = {
@@ -209,9 +210,9 @@ def main() -> None:
     }
     OUT.write_text(json.dumps(summary, indent=2))
     print(
-        f"\n[hard] DONE  baseline={base_correct}/{n}={summary['baseline_accuracy']*100:.0f}%  "
-        f"ebrm32={ebrm_correct}/{n}={summary['ebrm_accuracy']*100:.0f}%  "
-        f"lift={summary['lift']*100:+.0f} pts  ->  {OUT}"
+        f"\n[hard] DONE  baseline={base_correct}/{n}={summary['baseline_accuracy'] * 100:.0f}%  "
+        f"ebrm32={ebrm_correct}/{n}={summary['ebrm_accuracy'] * 100:.0f}%  "
+        f"lift={summary['lift'] * 100:+.0f} pts  ->  {OUT}"
     )
 
 

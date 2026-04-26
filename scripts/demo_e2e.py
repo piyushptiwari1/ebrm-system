@@ -28,9 +28,15 @@ MAX_NEW_TOKENS = 160
 OUT = Path("demo_results.json")
 
 GSM8K_SAMPLE = [
-    ("Janet has 3 apples. She buys 5 more, then gives 2 to her friend. How many apples does she have?", "6"),
+    (
+        "Janet has 3 apples. She buys 5 more, then gives 2 to her friend. How many apples does she have?",
+        "6",
+    ),
     ("A train travels 60 miles in 2 hours. What is its average speed in miles per hour?", "30"),
-    ("Tom has twice as many marbles as Jerry. If Jerry has 7 marbles, how many does Tom have?", "14"),
+    (
+        "Tom has twice as many marbles as Jerry. If Jerry has 7 marbles, how many does Tom have?",
+        "14",
+    ),
     ("A rectangle has length 8 cm and width 5 cm. What is its area in square centimeters?", "40"),
     ("If 4 pencils cost $2, how much do 10 pencils cost (in dollars)?", "5"),
 ]
@@ -91,7 +97,7 @@ def self_consistency_answer(model, tok, question: str, gold: str, n: int) -> dic
             pad_token_id=tok.eos_token_id,
         )
     latency = time.time() - t0
-    gen = out[:, enc["input_ids"].shape[1]:]
+    gen = out[:, enc["input_ids"].shape[1] :]
     texts = tok.batch_decode(gen, skip_special_tokens=True)
 
     chain = chain_for_intent(Intent.MATH_REASONING)
@@ -132,7 +138,7 @@ def main() -> None:
     model.eval()
     if DEVICE == "cuda":
         torch.cuda.synchronize()
-        print(f"[demo] model loaded, GPU mem: {torch.cuda.memory_allocated()/1e9:.2f} GB")
+        print(f"[demo] model loaded, GPU mem: {torch.cuda.memory_allocated() / 1e9:.2f} GB")
 
     print("[demo] measuring KV memory compression...")
     long_prompt = (GSM8K_SAMPLE[0][0] + " ") * 16
@@ -147,7 +153,7 @@ def main() -> None:
     for i, (q, gold) in enumerate(GSM8K_SAMPLE):
         r = self_consistency_answer(model, tok, q, gold, N_CANDIDATES)
         print(
-            f"  [{i+1}/{len(GSM8K_SAMPLE)}] gold={gold} chosen={r['chosen']} "
+            f"  [{i + 1}/{len(GSM8K_SAMPLE)}] gold={gold} chosen={r['chosen']} "
             f"correct={r['correct']} verified={r['n_verified']}/{r['n_total']} "
             f"({r['latency_s']}s)"
         )
@@ -165,7 +171,7 @@ def main() -> None:
         "per_item": results,
     }
     OUT.write_text(json.dumps(summary, indent=2))
-    print(f"[demo] DONE accuracy={accuracy*100:.1f}% avg_latency={avg_latency:.1f}s -> {OUT}")
+    print(f"[demo] DONE accuracy={accuracy * 100:.1f}% avg_latency={avg_latency:.1f}s -> {OUT}")
 
 
 if __name__ == "__main__":

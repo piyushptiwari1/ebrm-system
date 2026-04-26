@@ -3,6 +3,7 @@
 Uses tiny in-memory encoder/decoder/energy callables so the suite stays
 torch-free and CPU-only.
 """
+
 from __future__ import annotations
 
 import numpy as np
@@ -140,6 +141,7 @@ def test_encoder_must_return_1d() -> None:
 
 def test_inverse_energy_weighting_prefers_low_energy() -> None:
     """Two equally-supported answers should be tie-broken by lower energy."""
+
     # Custom decoder: read latent[1] (which we'll set per-trace) to choose answer.
     # We seed latent[1] from a deterministic-but-state-changing rule via the
     # candidate generator's noise. Simpler approach: decoder returns "low" if
@@ -167,6 +169,7 @@ def test_inverse_energy_weighting_prefers_low_energy() -> None:
 
 def test_require_verification_falls_back_when_no_pass() -> None:
     """If no candidate is verified, the pool falls back to all candidates."""
+
     # Force a math intent so the chain has SymPy + Lean verifiers, and use
     # a decoder that returns garbage so SymPy rejects everything. The
     # reasoner must still return a consensus answer instead of crashing.

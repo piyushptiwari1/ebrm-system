@@ -1,6 +1,7 @@
 """Tests for ``ebrm_system.inference.halt`` policies and integration with
 ``generate_candidates``.
 """
+
 from __future__ import annotations
 
 import numpy as np
