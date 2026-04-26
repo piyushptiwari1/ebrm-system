@@ -4,6 +4,25 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-04-27
+
+### Added
+
+- **Coconut-style latent recursion**
+  (`ebrm_system.inference.latent_recursion`): iterates the seed latent
+  through a caller-supplied `StepFn` before candidate generation, with
+  optional plateau-based early halting via the existing `HaltPolicy`.
+  Default step is a torch-free finite-difference energy descent
+  (`gradient_step`). Disabled by default; opt in via
+  `ReasonerConfig.latent_recursion = RecursionConfig(max_steps=K)`.
+  Audit info (`steps_run`, `halted_early`, `energy_start`, `energy_end`)
+  is surfaced in `ReasoningResult.details["latent_recursion"]`.
+  References: Coconut (arXiv:2412.06769), recurrent-depth (OpenReview
+  D6o6Bwtq7h), LatentSeek.
+- New constructor kwarg `recursion_step_fn` on `HierarchicalLatentReasoner`
+  for plugging in a torch-backed recurrent block.
+- 17 new tests; suite now 229 tests, 95% coverage.
+
 ## [0.7.0] - 2026-04-27
 
 ### Added

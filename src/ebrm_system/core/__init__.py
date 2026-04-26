@@ -32,6 +32,11 @@ from ebrm_system.inference.diverse_selector import (
     DiverseSelectionConfig,
     select_diverse,
 )
+from ebrm_system.inference.latent_recursion import (
+    RecursionConfig,
+    RecursionResult,
+    recurse_latent,
+)
 
 __all__ = [
     "ComputeProfile",
@@ -43,11 +48,14 @@ __all__ = [
     "LatentCandidate",
     "ReasonerConfig",
     "ReasoningResult",
+    "RecursionConfig",
+    "RecursionResult",
     "RefinementConfig",
     "ScaledBudget",
     "TraceItem",
     "build_refined_question",
     "collect_critiques",
+    "recurse_latent",
     "scale_budget",
     "select_diverse",
     "should_refine",

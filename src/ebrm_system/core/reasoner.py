@@ -53,6 +53,12 @@ from ebrm_system.inference.diverse_selector import (
     DiverseSelectionConfig,
     select_diverse,
 )
+from ebrm_system.inference.latent_recursion import (
+    RecursionConfig,
+    StepFn,
+    gradient_step,
+    recurse_latent,
+)
 from ebrm_system.intent import Classifier, IntentPrediction, RuleBasedClassifier
 from ebrm_system.verifiers.base import VerificationResult, VerifierChain
 from ebrm_system.verifiers.routing import chain_for_intent
@@ -126,6 +132,15 @@ class ReasonerConfig:
     cluster reaches the voter. Reference: HuggingFaceH4 'Scaling test-time
     compute' (DVTS).
     """
+    latent_recursion: RecursionConfig | None = None
+    """Coconut-style recursion applied to the seed latent before candidate
+    generation. ``None`` disables it. When set with ``max_steps > 0``, the
+    seed latent is iterated through ``step_fn`` (default: finite-difference
+    energy gradient descent on the reasoner's ``energy_fn``) up to
+    ``max_steps`` times, with optional plateau-based early halting.
+    Reference: Coconut (arXiv:2412.06769), recurrent-depth (OpenReview
+    D6o6Bwtq7h), LatentSeek.
+    """
 
 
 class HierarchicalLatentReasoner:
@@ -164,6 +179,7 @@ class HierarchicalLatentReasoner:
         classifier: Classifier | None = None,
         index: LatentIndex | None = None,
         config: ReasonerConfig | None = None,
+        recursion_step_fn: StepFn | None = None,
     ) -> None:
         self.encoder = encoder
         self.decoder = decoder
@@ -171,6 +187,7 @@ class HierarchicalLatentReasoner:
         self.classifier = classifier or RuleBasedClassifier()
         self.index = index
         self.config = config or ReasonerConfig()
+        self.recursion_step_fn = recursion_step_fn
 
     def solve(self, question: str) -> ReasoningResult:
         """Run the full hierarchical reasoning pipeline on one question.
@@ -242,6 +259,7 @@ class HierarchicalLatentReasoner:
                 if self.config.diverse_selection is not None
                 else None
             ),
+            "latent_recursion": getattr(self, "_last_recursion", None),
         }
         return ReasoningResult(
             answer=vote.answer,
@@ -268,6 +286,7 @@ class HierarchicalLatentReasoner:
         check whether verifiers were available for the routed intent.
         """
         seed_latent = self._as_float32(self.encoder(question))
+        seed_latent = self._maybe_recurse_latent(seed_latent)
         cand_cfg = CandidateConfig(
             num_candidates=budget.num_candidates,
             num_steps=budget.num_steps,
@@ -326,6 +345,33 @@ class HierarchicalLatentReasoner:
             config=cfg,
         )
         return [traces[i] for i in survivors]
+
+    def _maybe_recurse_latent(self, seed_latent: LatentT) -> LatentT:
+        """Apply Coconut-style latent recursion to the seed (no-op if disabled).
+
+        Stores a per-call audit dict at ``self._last_recursion`` so
+        ``solve()`` can surface it in :attr:`ReasoningResult.details`.
+        """
+        cfg = self.config.latent_recursion
+        if cfg is None or cfg.max_steps == 0:
+            self._last_recursion = None
+            return seed_latent
+        step_fn: StepFn = self.recursion_step_fn or gradient_step(
+            self.energy_fn, step_size=cfg.step_size, fd_eps=cfg.fd_eps
+        )
+        result = recurse_latent(
+            seed_latent,
+            step_fn,
+            config=cfg,
+            energy_fn=self.energy_fn,
+        )
+        self._last_recursion = {
+            "steps_run": result.steps_run,
+            "halted_early": result.halted_early,
+            "energy_start": (result.energy_trajectory[0] if result.energy_trajectory else None),
+            "energy_end": (result.energy_trajectory[-1] if result.energy_trajectory else None),
+        }
+        return result.latent
 
     @staticmethod
     def _as_float32(x: LatentT) -> LatentT:

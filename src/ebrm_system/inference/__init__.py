@@ -18,6 +18,12 @@ from ebrm_system.inference.diverse_selector import (
     DiverseSelectionConfig,
     select_diverse,
 )
+from ebrm_system.inference.latent_recursion import (
+    RecursionConfig,
+    RecursionResult,
+    gradient_step,
+    recurse_latent,
+)
 from ebrm_system.inference.qjl import QJLConfig, QJLProjector
 from ebrm_system.inference.turboquant_kv import (
     CompressedKV,
@@ -34,7 +40,11 @@ __all__ = [
     "KVQuantConfig",
     "QJLConfig",
     "QJLProjector",
+    "RecursionConfig",
+    "RecursionResult",
     "generate_candidates",
+    "gradient_step",
     "langevin_step",
+    "recurse_latent",
     "select_diverse",
 ]
