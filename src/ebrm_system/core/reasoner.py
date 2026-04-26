@@ -61,7 +61,7 @@ from ebrm_system.inference.latent_recursion import (
 )
 from ebrm_system.inference.mcts import MCTSConfig, mcts_select
 from ebrm_system.intent import Classifier, IntentPrediction, RuleBasedClassifier
-from ebrm_system.verifiers.base import VerificationResult, VerifierChain
+from ebrm_system.verifiers.base import VerificationResult, Verifier, VerifierChain
 from ebrm_system.verifiers.routing import chain_for_intent
 from ebrm_system.voting import SelfConsistencyVoter, VoteResult
 from ebrm_system.voting.voter import Candidate as VoteCandidate
@@ -204,6 +204,7 @@ class HierarchicalLatentReasoner:
         config: ReasonerConfig | None = None,
         recursion_step_fn: StepFn | None = None,
         mcts_value_fn: Callable[[TraceItem], float] | None = None,
+        extra_verifiers: list[Verifier] | None = None,
     ) -> None:
         self.encoder = encoder
         self.decoder = decoder
@@ -213,6 +214,7 @@ class HierarchicalLatentReasoner:
         self.config = config or ReasonerConfig()
         self.recursion_step_fn = recursion_step_fn
         self.mcts_value_fn = mcts_value_fn
+        self.extra_verifiers: list[Verifier] = list(extra_verifiers or [])
 
     def solve(self, question: str) -> ReasoningResult:
         """Run the full hierarchical reasoning pipeline on one question.
@@ -330,10 +332,13 @@ class HierarchicalLatentReasoner:
             index=self.index,
         )
         chain = chain_for_intent(prediction.intent)
+        if self.extra_verifiers:
+            chain = VerifierChain(list(chain.verifiers) + list(self.extra_verifiers))
+        verifier_context: dict[str, object] = {"question": question}
         traces: list[TraceItem] = []
         for lc in latent_candidates:
             answer = self.decoder(lc.latent)
-            results = chain.verify(answer) if chain.verifiers else []
+            results = chain.verify(answer, verifier_context) if chain.verifiers else []
             ok = bool(chain.verifiers) and bool(results) and chain.all_passed(results)
             traces.append(
                 TraceItem(

@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-04-27
+
+### Added
+
+- **PRM-guided refinement** — closes the loop between v0.6 (refinement)
+  and v0.7 (pluggable PRM verifier):
+  - New `extra_verifiers` constructor kwarg on
+    `HierarchicalLatentReasoner`. Verifiers passed here are *appended*
+    to the intent-routed chain so PRM rejections (or any custom check)
+    flow into the existing refinement-and-critique loop without
+    overwriting hard verifiers.
+  - The reasoner now passes `{"question": question}` as verifier
+    context, so PRM-style verifiers receive both the question and the
+    candidate answer (matches the `ScalarPRMFn` / `GenerativePRMFn`
+    contracts in `verifiers/prm.py`).
+- 3 new tests; suite now 265 tests, 95% coverage.
+
 ## [0.11.0] - 2026-04-27
 
 ### Added
