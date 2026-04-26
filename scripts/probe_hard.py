@@ -13,7 +13,9 @@ We run Qwen3-4B with two configurations and report side-by-side accuracy:
 """
 from __future__ import annotations
 
-import json, re, time
+import json
+import re
+import time
 from collections import Counter
 from pathlib import Path
 
@@ -71,7 +73,7 @@ HARD_ITEMS = [
     (
         "An item costs $200. It is discounted by 25%, then a 10% sales tax is "
         "applied to the discounted price. What is the final price in dollars?",
-        str(int(round(200 * 0.75 * 1.10))),  # 165
+        str(round(200 * 0.75 * 1.10)),  # 165
         "percent",
     ),
     # 7. Counting with overlap (inclusion-exclusion)
