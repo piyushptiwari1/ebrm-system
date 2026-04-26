@@ -4,6 +4,21 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-04-27
+
+### Added
+
+- **Episodic write-back to the index** (Letta-style closed-loop learning):
+  new `ReasonerConfig.learn_from_solves` flag. When enabled, every
+  successful `solve()` pushes the winning trace's latent into
+  `self.index` via the duck-typed `add(latents, payloads)` method.
+  Compatible with both `LatentIndex` and `TieredMemory` so subsequent
+  solves can warm-start from prior wins. `False` by default to preserve
+  existing read-only behaviour. Audit info surfaced at
+  `ReasoningResult.details["memory_write"]` (`written`, `kind`,
+  `energy`, `answer`).
+- 5 new tests; suite now 262 tests, 95% coverage.
+
 ## [0.10.0] - 2026-04-27
 
 ### Added

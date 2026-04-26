@@ -152,6 +152,18 @@ class ReasonerConfig:
     their own ``mcts_value_fn`` for PRM-guided search.
     Reference: ReST-MCTS* (arXiv:2406.03816), AlphaProof.
     """
+    learn_from_solves: bool = False
+    """Write each solved trace's winning latent back into the index after
+    voting. ``False`` preserves the previous (read-only) behaviour.
+
+    When enabled, the reasoner picks the lowest-energy verified candidate
+    (or the lowest-energy candidate overall if none verified) and pushes
+    its latent + answer payload into ``self.index`` via the duck-typed
+    ``add(latents, payloads)`` method. Compatible with both
+    :class:`~ebrm_system.reward.qjl_index.LatentIndex` and
+    :class:`~ebrm_system.memory.TieredMemory`. Closes the loop so the
+    agent learns across solves (Letta-style episodic write-back).
+    """
 
 
 class HierarchicalLatentReasoner:
@@ -275,6 +287,7 @@ class HierarchicalLatentReasoner:
             ),
             "latent_recursion": getattr(self, "_last_recursion", None),
             "mcts": getattr(self, "_last_mcts", None),
+            "memory_write": self._maybe_write_back(all_traces, vote),
         }
         return ReasoningResult(
             answer=vote.answer,
@@ -402,6 +415,42 @@ class HierarchicalLatentReasoner:
         }
         # MCTS output is a strict permutation; honour it order-preservingly.
         return [traces[i] for i in result.ranking]
+
+    def _maybe_write_back(
+        self, traces: list[TraceItem], vote: VoteResult
+    ) -> dict[str, object] | None:
+        """Push the winning trace's latent into the index (Letta-style episodic write-back).
+
+        No-op when ``learn_from_solves`` is False, or when the index has no
+        ``add`` method, or when the trace pool is empty. Returns the audit
+        dict surfaced in :attr:`ReasoningResult.details`.
+        """
+        if not self.config.learn_from_solves or self.index is None or not traces:
+            return None
+        add = getattr(self.index, "add", None)
+        if add is None:
+            return None
+        # Pick the verified trace whose answer matches the vote winner with
+        # the lowest energy. Fall back to lowest-energy candidate overall.
+        winner_answer = str(vote.answer)
+        verified_winners = [t for t in traces if t.verified and str(t.answer) == winner_answer]
+        if verified_winners:
+            chosen = min(verified_winners, key=lambda t: t.energy)
+            kind = "verified"
+        else:
+            chosen = min(traces, key=lambda t: t.energy)
+            kind = "fallback"
+        latent = np.asarray(chosen.latent, dtype=np.float32)[np.newaxis, :]
+        try:
+            add(latent, [chosen.latent])
+        except Exception as exc:
+            return {"written": False, "error": str(exc)}
+        return {
+            "written": True,
+            "kind": kind,
+            "energy": chosen.energy,
+            "answer": winner_answer,
+        }
 
     def _maybe_recurse_latent(self, seed_latent: LatentT) -> LatentT:
         """Apply Coconut-style latent recursion to the seed (no-op if disabled).
