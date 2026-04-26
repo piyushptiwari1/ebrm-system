@@ -146,8 +146,7 @@ def commutes(
     ref = outputs[0]
     if isinstance(ref, np.ndarray):
         ok = all(
-            isinstance(o, np.ndarray) and _cosine(ref, o) >= cosine_threshold
-            for o in outputs[1:]
+            isinstance(o, np.ndarray) and _cosine(ref, o) >= cosine_threshold for o in outputs[1:]
         )
     else:
         ok = all(_equal_exact(ref, o) for o in outputs[1:])

@@ -48,9 +48,7 @@ class LatentIndex:
     def add(self, latents: NDArray[np.float32], payloads: list[object]) -> None:
         """Add a batch of latents with parallel payloads (e.g. solution strings)."""
         if len(payloads) != latents.shape[0]:
-            raise ValueError(
-                f"payload count {len(payloads)} != latent count {latents.shape[0]}"
-            )
+            raise ValueError(f"payload count {len(payloads)} != latent count {latents.shape[0]}")
         new_codes = self._projector.project_batch(latents)
         self._codes = (
             new_codes if self._codes is None else np.concatenate([self._codes, new_codes], axis=0)
@@ -60,9 +58,7 @@ class LatentIndex:
     def __len__(self) -> int:
         return 0 if self._codes is None else self._codes.shape[0]
 
-    def search(
-        self, query: NDArray[np.float32], k: int = 8
-    ) -> list[tuple[float, object]]:
+    def search(self, query: NDArray[np.float32], k: int = 8) -> list[tuple[float, object]]:
         """Return top-k entries by approximate cosine similarity (high → low).
 
         Distance metric is computed in code space via Hamming distance:

@@ -19,11 +19,7 @@ def _build_data_pipeline_diagram() -> Diagram:
     d = Diagram()
     d.add(ExactMorphism("clean", "raw", "cleaned", lambda x: x.strip().lower()))
     d.add(ExactMorphism("tokenize", "cleaned", "tokens", lambda x: x.split()))
-    d.add(
-        ExactMorphism(
-            "e2e", "raw", "tokens", lambda x: x.strip().lower().split()
-        )
-    )
+    d.add(ExactMorphism("e2e", "raw", "tokens", lambda x: x.strip().lower().split()))
     return d
 
 
@@ -46,9 +42,7 @@ def test_commutes_vector_with_threshold() -> None:
     d = Diagram()
     d.add(VectorMorphism("a", "x", "y", lambda v: v * 2.0))
     d.add(VectorMorphism("b", "x", "y", lambda v: v * 2.0 + 1e-4))
-    ok, _ = commutes(
-        d, [["a"], ["b"]], np.ones(8, dtype=np.float32), cosine_threshold=0.99
-    )
+    ok, _ = commutes(d, [["a"], ["b"]], np.ones(8, dtype=np.float32), cosine_threshold=0.99)
     assert ok
 
 

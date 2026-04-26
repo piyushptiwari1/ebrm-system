@@ -67,8 +67,7 @@ def verify_routed(
     chain = chain_for_intent(pred.intent)
     if not chain.verifiers:
         console.print(
-            f"[yellow]intent={pred.intent.value}: no hard verifiers; "
-            f"EBRM soft score only.[/yellow]"
+            f"[yellow]intent={pred.intent.value}: no hard verifiers; EBRM soft score only.[/yellow]"
         )
         return
     context: dict[str, object] = {"expected": expected} if expected else {}

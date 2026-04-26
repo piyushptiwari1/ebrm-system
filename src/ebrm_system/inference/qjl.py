@@ -69,9 +69,7 @@ class QJLProjector:
     def project_batch(self, x_batch: NDArray[np.float32]) -> NDArray[np.uint8]:
         """Project a batch x_batch in R^(n by d) -> packed bits uint8[n, m/8]."""
         if x_batch.ndim != 2 or x_batch.shape[1] != self.config.in_dim:
-            raise ValueError(
-                f"expected shape (n, {self.config.in_dim}), got {x_batch.shape}"
-            )
+            raise ValueError(f"expected shape (n, {self.config.in_dim}), got {x_batch.shape}")
         y = x_batch.astype(np.float32, copy=False) @ self._R.T  # (n, m)
         bits = (y >= 0).astype(np.uint8)
         return np.packbits(bits, axis=1)
@@ -80,9 +78,7 @@ class QJLProjector:
     def compressed_bytes_per_vector(self) -> int:
         return self.config.out_bits // 8
 
-    def estimate_cosine(
-        self, q1: NDArray[np.uint8], q2: NDArray[np.uint8]
-    ) -> float:
+    def estimate_cosine(self, q1: NDArray[np.uint8], q2: NDArray[np.uint8]) -> float:
         """Approximate cosine(x, x') from packed bit codes via Hamming distance.
 
         cos(theta) ~= cos(pi * h / m), where h is normalized Hamming distance.

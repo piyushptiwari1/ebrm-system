@@ -27,9 +27,7 @@ def test_generate_candidates_count_and_sort() -> None:
 def test_generate_candidates_descend_energy() -> None:
     """After enough Langevin steps the best candidate should beat the seed."""
     seed_latent = np.array([2.0, 2.0, 2.0], dtype=np.float32)
-    cfg = CandidateConfig(
-        num_candidates=8, num_steps=50, step_size=0.1, noise_scale=0.01, seed=1
-    )
+    cfg = CandidateConfig(num_candidates=8, num_steps=50, step_size=0.1, noise_scale=0.01, seed=1)
     cands = generate_candidates(seed_latent, quadratic_energy, cfg)
     assert cands[0].energy < quadratic_energy(seed_latent)
 
