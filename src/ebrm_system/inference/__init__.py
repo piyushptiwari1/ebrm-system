@@ -14,6 +14,10 @@ from ebrm_system.inference.candidates import (
     generate_candidates,
     langevin_step,
 )
+from ebrm_system.inference.diverse_selector import (
+    DiverseSelectionConfig,
+    select_diverse,
+)
 from ebrm_system.inference.qjl import QJLConfig, QJLProjector
 from ebrm_system.inference.turboquant_kv import (
     CompressedKV,
@@ -25,10 +29,12 @@ __all__ = [
     "Candidate",
     "CandidateConfig",
     "CompressedKV",
+    "DiverseSelectionConfig",
     "KVCacheCompressor",
     "KVQuantConfig",
     "QJLConfig",
     "QJLProjector",
     "generate_candidates",
     "langevin_step",
+    "select_diverse",
 ]

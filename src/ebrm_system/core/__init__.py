@@ -28,10 +28,15 @@ from ebrm_system.core.refinement import (
     collect_critiques,
     should_refine,
 )
+from ebrm_system.inference.diverse_selector import (
+    DiverseSelectionConfig,
+    select_diverse,
+)
 
 __all__ = [
     "ComputeProfile",
     "DecoderFn",
+    "DiverseSelectionConfig",
     "EncoderFn",
     "EnergyFn",
     "HierarchicalLatentReasoner",
@@ -44,5 +49,6 @@ __all__ = [
     "build_refined_question",
     "collect_critiques",
     "scale_budget",
+    "select_diverse",
     "should_refine",
 ]
