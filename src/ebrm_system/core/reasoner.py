@@ -49,6 +49,10 @@ from ebrm_system.inference.candidates import (
     CandidateConfig,
     generate_candidates,
 )
+from ebrm_system.inference.diverse_selector import (
+    DiverseSelectionConfig,
+    select_diverse,
+)
 from ebrm_system.intent import Classifier, IntentPrediction, RuleBasedClassifier
 from ebrm_system.verifiers.base import VerificationResult, VerifierChain
 from ebrm_system.verifiers.routing import chain_for_intent
@@ -114,6 +118,14 @@ class ReasonerConfig:
     """Auto-scale candidate count / Langevin steps by question difficulty."""
     refinement: RefinementConfig = field(default_factory=RefinementConfig)
     """Verification-and-refinement loop (disabled when ``max_rounds == 0``)."""
+    diverse_selection: DiverseSelectionConfig | None = None
+    """DVTS-style diverse-cluster pre-vote filter. ``None`` disables it.
+
+    When set, candidates are clustered in latent space by greedy
+    farthest-first traversal; only the lowest-energy candidate from each
+    cluster reaches the voter. Reference: HuggingFaceH4 'Scaling test-time
+    compute' (DVTS).
+    """
 
 
 class HierarchicalLatentReasoner:
@@ -199,6 +211,8 @@ class HierarchicalLatentReasoner:
 
         # Vote over the (possibly enlarged) trace pool
         pool = self._select_voting_pool(all_traces)
+        n_pre_diverse = len(pool)
+        pool = self._apply_diverse_selection(pool)
         vote_candidates = [
             VoteCandidate(answer=t.answer, energy=t.energy, trace_id=t.seed) for t in pool
         ]
@@ -223,6 +237,11 @@ class HierarchicalLatentReasoner:
                 "num_restarts": budget.num_restarts,
             },
             "refinement_rounds": n_rounds - 1,
+            "diverse_selection": (
+                {"survivors": len(pool), "input": n_pre_diverse}
+                if self.config.diverse_selection is not None
+                else None
+            ),
         }
         return ReasoningResult(
             answer=vote.answer,
@@ -295,6 +314,18 @@ class HierarchicalLatentReasoner:
             return traces
         verified = [t for t in traces if t.verified]
         return verified if verified else traces
+
+    def _apply_diverse_selection(self, traces: list[TraceItem]) -> list[TraceItem]:
+        """Apply DVTS-style cluster filtering before voting (no-op if disabled)."""
+        cfg = self.config.diverse_selection
+        if cfg is None or not traces:
+            return traces
+        survivors = select_diverse(
+            [t.latent for t in traces],
+            [t.energy for t in traces],
+            config=cfg,
+        )
+        return [traces[i] for i in survivors]
 
     @staticmethod
     def _as_float32(x: LatentT) -> LatentT:

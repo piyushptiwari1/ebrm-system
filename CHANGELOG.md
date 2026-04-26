@@ -4,6 +4,27 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-04-27
+
+### Added
+
+- **Diverse Verifier Tree Search-style selection**
+  (`ebrm_system.inference.diverse_selector`): clusters candidate latents
+  by greedy farthest-first traversal, keeps the lowest-energy member of
+  each cluster, and votes only over the survivors. Disabled by default;
+  set `ReasonerConfig.diverse_selection = DiverseSelectionConfig(...)`
+  to enable. Reference: HuggingFaceH4 "Scaling test-time compute"
+  (DVTS).
+- **Pluggable PRM verifier** (`ebrm_system.verifiers.prm`):
+  `ScalarPRMVerifier` wraps `(question, answer) -> float` plus a
+  threshold; `GenerativePRMVerifier` wraps
+  `(question, answer) -> PRMVerdict` for richer step-level feedback
+  (the ThinkPRM / Athena-PRM contract). The generative verifier carries
+  its rejection reasoning into `VerificationResult.reason`, which the
+  v0.6 refinement loop folds back into the next prompt automatically.
+- `ReasoningResult.details["diverse_selection"]` reports
+  `{input, survivors}` whenever DVTS is enabled.
+
 ## [0.6.0] - 2026-04-27
 
 ### Added
