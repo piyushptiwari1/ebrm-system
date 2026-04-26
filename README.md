@@ -114,7 +114,7 @@ result = voter.vote([
 | `ebrm_system.voting` | ✅ stable | Self-consistency with weighted bucketing |
 | `ebrm_system.inference` | ✅ stable | Langevin candidates, QJL, TurboQuant KV + attention |
 | `ebrm_system.reward` | ✅ stable | LatentIndex (QJL-backed nearest-neighbour reward) |
-| `ebrm_system.core` | 🚧 WIP | Hierarchical latent reasoner (v3) |
+| `ebrm_system.core` | ✅ stable | `HierarchicalLatentReasoner` — end-to-end orchestrator |
 
 ## Development
 
