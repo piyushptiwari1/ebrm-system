@@ -4,6 +4,20 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-04-27
+
+### Added
+
+- **Three-tier latent memory** (`ebrm_system.memory.tiered`): a
+  Hindsight/Letta-style stack of working → episodic → semantic
+  `LatentIndex` instances with hit-count promotion, TTL expiry, capacity
+  eviction, and an optional summarization hook on eviction
+  (`Summarizer` callback). Drop-in compatible with the existing
+  `LatentIndex` duck-typed interface, so it slots straight into
+  `generate_candidates(..., index=tiered_memory)` for QJL warm-start.
+  References: Hindsight (LongMemEval 91.4%), Letta/MemGPT.
+- 14 new tests; suite now 243 tests, 95% coverage.
+
 ## [0.8.0] - 2026-04-27
 
 ### Added
