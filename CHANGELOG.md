@@ -4,6 +4,32 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-04-27
+
+### Added
+
+- **`ebrm_system.core` is now stable** — `HierarchicalLatentReasoner`
+  composes intent routing → encoder → Langevin candidate generation
+  (with optional QJL warm-start) → decoder → verifier chain → weighted
+  self-consistency vote into a single `solve(question)` call. Encoder,
+  decoder, and energy callables are injected so the module is
+  torch-optional and unit-testable on CPU.
+- `ReasonerConfig` knobs: `weight_by`, `numerical_tolerance`,
+  `require_verification`, `seed`. Compute budget (Langevin steps, restart
+  count, candidate count) is auto-selected from the intent classifier.
+- `ReasoningResult` carries a tuple of `TraceItem`s (latent, decoded
+  answer, energy, seed, warm-start flag, verifier results) for full
+  audit. `verified_fraction` reports the share of candidates passing the
+  hard chain.
+- 7 new unit tests in `tests/test_core_reasoner.py` covering deterministic
+  seeding, intent routing, QJL warm-start, encoder shape validation, and
+  verification fallback. Total suite: 127 tests, 94% coverage.
+
+### Changed
+
+- README component table: `core` is now ✅ stable. The only remaining
+  change vs v0.3.0 is the new `core` row.
+
 ## [0.3.0] - 2026-04-27
 
 ### Added

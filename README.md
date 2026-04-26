@@ -110,11 +110,11 @@ result = voter.vote([
 | Module | Status | Purpose |
 | --- | --- | --- |
 | `ebrm_system.intent` | ✅ stable | Intent + difficulty + compute budget |
-| `ebrm_system.verifiers` | ✅ stable | SymPy / exec sandbox / regex verifiers |
+| `ebrm_system.verifiers` | ✅ stable | SymPy / exec / regex / Lean / DRI + intent routing |
 | `ebrm_system.voting` | ✅ stable | Self-consistency with weighted bucketing |
-| `ebrm_system.core` | 🚧 WIP | Hierarchical latent reasoner |
-| `ebrm_system.reward` | 🚧 WIP | Process reward model |
-| `ebrm_system.inference` | 🚧 WIP | Adaptive Langevin orchestrator |
+| `ebrm_system.inference` | ✅ stable | Langevin candidates, QJL, TurboQuant KV + attention |
+| `ebrm_system.reward` | ✅ stable | LatentIndex (QJL-backed nearest-neighbour reward) |
+| `ebrm_system.core` | ✅ stable | `HierarchicalLatentReasoner` — end-to-end orchestrator |
 
 ## Development
 

@@ -1,11 +1,34 @@
-"""Core reasoning primitives — hierarchical latents, energy functions.
+"""Core reasoning primitives — hierarchical latent reasoner.
 
-This module will host the v3 reasoning core once EBRM v2 training completes.
-The v2 reference implementation is available at:
-    https://github.com/piyushptiwari1/ebrm
+The :class:`HierarchicalLatentReasoner` composes the rest of `ebrm-system`
+(intent routing, candidate generation, verifiers, voting) into a single
+end-to-end pipeline. The encoder/decoder/energy callables are injected so
+this module is torch-optional and unit-testable on CPU.
 
-Planned components:
-    HierarchicalLatentReasoner  — thought sequence s_0 ... s_T
-    StepwiseEnergy              — per-step energy with consistency term
-    AdaptiveLangevin            — difficulty-aware compute budget
+For the real EBRM v2 weights, load them from
+    https://huggingface.co/piyushptiwari/ebrm-v2-qwen3-4b
+and adapt them to the :data:`EncoderFn`, :data:`DecoderFn`, :data:`EnergyFn`
+contracts.
 """
+
+from ebrm_system.core.reasoner import (
+    DecoderFn,
+    EncoderFn,
+    EnergyFn,
+    HierarchicalLatentReasoner,
+    LatentCandidate,
+    ReasonerConfig,
+    ReasoningResult,
+    TraceItem,
+)
+
+__all__ = [
+    "DecoderFn",
+    "EncoderFn",
+    "EnergyFn",
+    "HierarchicalLatentReasoner",
+    "LatentCandidate",
+    "ReasonerConfig",
+    "ReasoningResult",
+    "TraceItem",
+]
