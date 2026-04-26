@@ -29,6 +29,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 if TYPE_CHECKING:
+    from ebrm_system.inference.halt import HaltPolicy
     from ebrm_system.reward.qjl_index import LatentIndex
 
 LatentT = NDArray[np.float32]
@@ -69,6 +70,12 @@ class Candidate:
     seed: int
     warmstart: bool = False
     """True if this candidate was seeded from the QJL latent index."""
+    steps_run: int = 0
+    """Number of Langevin steps actually executed (≤ ``CandidateConfig.num_steps``).
+
+    Equal to ``num_steps`` unless an adaptive halt policy stopped the
+    trajectory early.
+    """
 
 
 def langevin_step(
@@ -101,15 +108,20 @@ def generate_candidates(
     energy_fn: EnergyFn,
     config: CandidateConfig | None = None,
     index: LatentIndex | None = None,
+    halt_policy: HaltPolicy | None = None,
 ) -> list[Candidate]:
     """Generate ``num_candidates`` independent low-energy latents.
 
     Each candidate starts from ``seed_latent`` plus a fresh Gaussian
-    perturbation, then runs ``num_steps`` of Langevin dynamics.
+    perturbation, then runs up to ``num_steps`` of Langevin dynamics.
 
     If ``index`` is provided and ``config.warmstart_k > 0``, the first
     ``warmstart_k`` candidates are seeded from the top-k QJL-nearest cached
     latents (whose payloads must themselves be ``np.ndarray`` latents).
+
+    If ``halt_policy`` is provided, each trajectory may stop early once the
+    policy fires (e.g. :class:`PlateauHalt` when the energy stops moving).
+    See :mod:`ebrm_system.inference.halt`.
     """
     cfg = config or CandidateConfig()
     base_rng = np.random.default_rng(cfg.seed)
@@ -128,14 +140,21 @@ def generate_candidates(
         warm = k < len(warm_seeds)
         base = warm_seeds[k] if warm else seed_latent
         s = base + rng.standard_normal(seed_latent.shape, dtype=np.float32) * cfg.noise_scale
-        for _ in range(cfg.num_steps):
+        if halt_policy is not None:
+            halt_policy.reset()
+        steps_run = 0
+        for step in range(cfg.num_steps):
             s = langevin_step(s, energy_fn, cfg.step_size, cfg.noise_scale, rng)
+            steps_run = step + 1
+            if halt_policy is not None and halt_policy.should_halt(step, float(energy_fn(s))):
+                break
         candidates.append(
             Candidate(
                 latent=s,
                 energy=float(energy_fn(s)),
                 seed=sub_seed,
                 warmstart=warm,
+                steps_run=steps_run,
             )
         )
 

@@ -4,6 +4,34 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-04-27
+
+### Added
+
+- **Adaptive halt for Langevin candidate generation**
+  (`ebrm_system.inference.halt`): new `HaltPolicy` Protocol with
+  `NeverHalt` (default, preserves prior behaviour) and `PlateauHalt` —
+  stops a trajectory when energy variance over a rolling window falls
+  below a threshold. Free compute savings on easy problems; no model
+  changes. `Candidate.steps_run` now records the actual step count.
+- **Bounded `LatentIndex` with eviction**
+  (`ebrm_system.reward.qjl_index`): `IndexConfig.max_size` and
+  `evict_policy = "lru" | "fifo"`. LRU touches entries on `search()`
+  hits; both policies are O(evicted) per insert. `add()` now returns the
+  number of evicted entries. Backwards-compatible: `max_size=None`
+  (default) keeps the index unbounded.
+- 14 new tests (6 halt + 8 eviction). Suite is now 141 tests, 94%
+  coverage. Lint and mypy clean.
+
+### Why these landed now
+
+Both are agent-loop hygiene improvements that block real deployments:
+
+- Without adaptive halt, every easy question pays for the worst-case
+  Langevin budget.
+- Without bounded `LatentIndex`, a long-running agent's warm-start
+  cache grows until OOM.
+
 ## [0.4.0] - 2026-04-27
 
 ### Added
