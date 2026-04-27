@@ -34,7 +34,34 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 ### Notes
 
 - 369 tests pass, ruff/mypy clean, 95 % coverage.
-- Full LongMemEval results recorded after v0.20 ships and runs on VM.
+
+### Measured — LongMemEval oracle (full 500 episodes, VM, T4)
+
+Honest negative result. We ran v0.19's pipeline three additional times,
+adding the new rerankers:
+
+| Configuration                                 | Overall | temporal | multi-sess | knowledge | preference |
+| --------------------------------------------- | ------- | -------- | ---------- | --------- | ---------- |
+| **v0.19 baseline (no temporal / entity)**     | **53.8 %** | 38.4 %   | **36.8 %** | **67.9 %** | 3.3 %     |
+| v0.20 + temporal (α=0.3) + entity (α=0.25)    | 52.2 %  | 39.1 %   | 33.1 %     | 62.8 %    | 3.3 %     |
+| v0.20 + temporal (α=0.2) + entity (α=0.10)    | 52.6 %  | **39.9 %** | 33.8 %   | 64.1 %    | 3.3 %     |
+| v0.20 + temporal-only (α=0.2)                 | 52.2 %  | 37.6 %   | 35.3 %    | 62.8 %    | 0.0 %     |
+
+Result files committed at `benchmarks/results/longmemeval-oracle-v0.20.0*.json`.
+
+**Why the linear blend hurts**: `BAAI/bge-reranker-v2-m3` already
+implicitly weights temporal + entity signals from its training
+distribution. A hand-tuned linear blend on top rotates its (already
+strong) ranking the wrong way — most visibly on knowledge-update
+(question_date proximity wrongly elevates stale info the bge ranker
+had correctly downweighted). The temporal reranker buys ~+1.5 pt on
+temporal-reasoning at the cost of −5 pt on knowledge-update.
+
+**Decision**: ship v0.20 with both rerankers as **opt-in flags,
+default OFF**. The infrastructure stays for v0.21, where the right
+fusion is LLM-based (let the LLM judge temporal + entity relevance
+during reranking) rather than a hand-tuned linear blend.
+
 ## [0.19.0] - 2026-04-27
 
 ### Added — LLM memory extraction (Phase 3 of 90%+ plan)
