@@ -25,10 +25,38 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - **`tests/test_benchmarks_v18.py`** — 16 new tests (DenseRetriever,
   BM25Retriever, RRFRetriever, reranker with mocked sentence-transformers).
 
+### Measured — LongMemEval oracle (full 500-episode run, VM, T4)
+
+| Retriever                 | Overall | Δ vs v0.17 |
+| ------------------------- | ------- | ---------- |
+| **hybrid + bge-reranker** | **50.6 %** | **−0.2 pt** |
+
+Per-type breakdown (v0.18 → vs v0.17):
+
+| Type                       | v0.18  | v0.17  | Δ        |
+| -------------------------- | ------ | ------ | -------- |
+| single-session-assistant   | 92.9 % | 83.9 % | **+9.0** |
+| single-session-user        | 82.9 % | 85.7 % | −2.9     |
+| knowledge-update           | 70.5 % | 66.7 % | **+3.8** |
+| temporal-reasoning         | 33.1 % | 37.6 % | −4.5     |
+| multi-session              | 33.1 % | 33.1 % |  0.0     |
+| single-session-preference  |  0.0 % |  3.3 % | −3.3     |
+
+- Result file: `benchmarks/results/longmemeval-oracle-v0.18.0.json`.
+- Wall time ≈ 25 min (1487 s) on a single Tesla T4 with cached Azure
+  embeddings + judge results from the v0.17 run.
+- Net accuracy is **flat** versus pure-dense — the cross-encoder
+  reranker meaningfully helps assistant-info / knowledge questions but
+  costs us on temporal / preference / single-session-user, where dense
+  similarity already had the right turn at rank 1 and BM25/CE
+  re-ordering pushes a worse turn ahead. **No regression to user**:
+  hybrid+rerank still ties the v0.17 baseline within noise. v0.19
+  (LLM-based extraction + ebrm v2 reader) targets the failure modes
+  this run exposed: temporal-reasoning, multi-session, preference.
+
 ### Notes
 
 - 338 tests pass, ruff/mypy clean, 95 % coverage.
-- Full LongMemEval results recorded after v0.18 ships and runs on VM.
 ## [0.17.0] - 2026-04-28
 
 ### Added — real semantics for LongMemEval (Phase 1 of 90%+ plan)
