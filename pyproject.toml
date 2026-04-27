@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ebrm-system"
-version = "0.16.0"
+version = "0.17.0"
 description = "EBRM System — a full reasoning pipeline with hierarchical latents, adaptive test-time compute, symbolic verification, and self-consistency voting."
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -56,6 +56,10 @@ benchmark = [
     "pandas>=2.2",
     "tqdm>=4.66",
     "trackio>=0.2",
+]
+embedders = [
+    "openai>=1.50",
+    "sentence-transformers>=3.0",
 ]
 
 [project.urls]

@@ -4,6 +4,57 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.17.0] - 2026-04-28
+
+### Added — real semantics for LongMemEval (Phase 1 of 90%+ plan)
+
+- **`benchmarks/embedders/`** package — pluggable `Embedder` Protocol with
+  three production-grade implementations:
+  - `HashEmbedder` (deterministic, 128-dim, no deps; the previous baseline)
+  - `SentenceTransformerEmbedder` (default `BAAI/bge-large-en-v1.5`,
+    1024-dim, lazy `sentence-transformers` import)
+  - `AzureOpenAIEmbedder` (default `text-embedding-3-small`, 1536-dim,
+    sha256-keyed disk cache, batched, exponential-backoff retry)
+- **`benchmarks/datasets/longmemeval_official.py`** — strict loader for the
+  official LongMemEval dataset (`OfficialEpisode` / `OfficialTurn` schema),
+  covering all six question types including `single-session-preference` and
+  the 30 abstention questions (`*_abs`).
+- **`benchmarks/judges/azure_llm.py`** — `AzureOpenAIJudge` reproducing the
+  paper's evaluation methodology: type-aware unified prompt, deterministic
+  abstention short-circuit, sha256-keyed disk cache, deterministic verdicts.
+- **`benchmarks/reader/azure_llm.py`** — `AzureOpenAIReader` that composes
+  free-text answers from retrieved turns with explicit abstention guidance.
+- **`scripts/run_longmemeval_official.py`** — full-stack runner for the
+  official dataset with `--embedder {hash,bge,azure}`, `--reader`,
+  `--judge`, `--top-k`, `--max-episodes`, `--cache-dir`. Emits a versioned
+  results JSON with embedder name + dim, reader/judge IDs, per-type and
+  abstention accuracy, elapsed seconds, and full provenance.
+- **`pyproject.toml`** — new optional-deps group `embedders`
+  (`openai>=1.50`, `sentence-transformers>=3.0`).
+- **`tests/test_benchmarks_v17.py`** — 28 new tests (HashEmbedder,
+  official loader, abstention detector, judge with mocked Azure).
+
+### Notes
+
+- **Measured LongMemEval accuracy (oracle, n=500)**: **50.8 %** overall
+  (254/500 correct), up from the no-semantics 35 % baseline.
+- Per-type breakdown: single-session-user 85.7 %, single-session-assistant
+  83.9 %, knowledge-update 66.7 %, temporal-reasoning 37.6 %,
+  multi-session 33.1 %, single-session-preference 3.3 % (judge is strict
+  on subjective preferences — addressed in v0.21).
+- Abstention bucket: 26/30 = **86.7 %** correct (the model knows what it
+  doesn't know).
+- Configuration: `text-embedding-3-small` (1536-dim) + `gpt-4o-mini`
+  reader + `gpt-4o-mini` LLM-judge, top-k=5, full 500-episode oracle
+  split. Wall time 881.9 s (≈14.7 min, fully cached on resume).
+- Results JSON checked in at
+  [benchmarks/results/longmemeval-oracle-v0.17.0.json](benchmarks/results/longmemeval-oracle-v0.17.0.json).
+- This release replaces the no-semantics 35 % floor with real embeddings,
+  a real reader, and a real judge — the foundation for v0.18 (hybrid
+  retrieval), v0.19 (LLM extraction), v0.20 (temporal/entity), v0.21
+  (fusion + abstention), v0.22 (docs).
+- 322 tests pass, ruff/mypy clean, 95 % coverage.
+
 ## [0.16.0] - 2026-04-27
 
 ### Added
