@@ -12,6 +12,7 @@ from benchmarks.datasets.longmemeval_official import OfficialEpisode, OfficialTu
 from benchmarks.extraction import (
     ExtractedMemory,
     MemoryExtractor,
+    augment_episode_with_memories,
     memories_to_episode,
 )
 
@@ -84,6 +85,32 @@ def test_memories_to_episode_empty() -> None:
     new_ep = memories_to_episode(ep, [])
     assert new_ep.turns == ()
     assert new_ep.question == ep.question
+
+
+def test_augment_episode_with_memories_appends_with_namespaced_session_id() -> None:
+    ep = _ep([_turn(0, 0, "user", "I saw a movie."), _turn(0, 1, "assistant", "Cool.")])
+    memories = [
+        ExtractedMemory(
+            text="User saw a movie.",
+            session_id="s0",
+            session_idx=0,
+            session_date="2025/01/01 (Wed) 09:00",
+            role="memory",
+        )
+    ]
+    aug = augment_episode_with_memories(ep, memories)
+    assert len(aug.turns) == 3
+    assert aug.turns[0].session_id == "s0"
+    assert aug.turns[1].session_id == "s0"
+    assert aug.turns[2].session_id == "s0::mem"
+    assert aug.turns[2].content == "User saw a movie."
+    assert aug.turns[2].turn_idx == 2
+
+
+def test_augment_episode_with_memories_empty_passthrough() -> None:
+    ep = _ep([_turn(0, 0, "user", "Hi")])
+    aug = augment_episode_with_memories(ep, [])
+    assert aug.turns == ep.turns
 
 
 # --- Azure extractor with mocked OpenAI client ----------------------------------

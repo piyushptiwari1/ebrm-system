@@ -11,6 +11,7 @@ from benchmarks.extraction.azure_llm import AzureLLMExtractor
 from benchmarks.extraction.base import (
     ExtractedMemory,
     MemoryExtractor,
+    augment_episode_with_memories,
     memories_to_episode,
 )
 
@@ -18,5 +19,6 @@ __all__ = [
     "AzureLLMExtractor",
     "ExtractedMemory",
     "MemoryExtractor",
+    "augment_episode_with_memories",
     "memories_to_episode",
 ]

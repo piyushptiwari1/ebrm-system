@@ -45,11 +45,12 @@ from benchmarks.embedders.hash import HashEmbedder  # noqa: E402
 from benchmarks.extraction import (  # noqa: E402
     ExtractedMemory,
     MemoryExtractor,
-    memories_to_episode,
+    augment_episode_with_memories,
 )
 from benchmarks.retrieval import (  # noqa: E402
     BM25Retriever,
     DenseRetriever,
+    NeighborExpander,
     Retriever,
     RRFRetriever,
     ScoredTurn,
@@ -200,6 +201,15 @@ def main() -> int:
         help="Cap number of episodes (smoke testing). Default = all.",
     )
     p.add_argument(
+        "--neighbor-window",
+        type=int,
+        default=0,
+        help=(
+            "After retrieval, also include +/-N same-session neighbors of "
+            "each hit (cheap recall boost; default: 0 = off)."
+        ),
+    )
+    p.add_argument(
         "--extraction",
         choices=["none", "azure"],
         default="none",
@@ -260,9 +270,12 @@ def main() -> int:
         reranker_name=args.reranker,
         candidate_k=args.rerank_candidate_k,
     )
+    if args.neighbor_window > 0:
+        retriever = NeighborExpander(retriever, window=args.neighbor_window)
+        print(f"[neighbors] window={args.neighbor_window}", flush=True)
     extractor = _build_extractor(args.extraction, cache_dir=cache_dir)
     if extractor is not None:
-        print(f"[extractor] {extractor.name}", flush=True)
+        print(f"[extractor] {extractor.name} (additive corpus)", flush=True)
 
     reader = None
     if args.reader == "azure":
@@ -285,7 +298,7 @@ def main() -> int:
             memories: list[ExtractedMemory] = extractor.extract(ep)
             extracted_counts.append(len(memories))
             if memories:
-                retrieval_episode = memories_to_episode(ep, memories)
+                retrieval_episode = augment_episode_with_memories(ep, memories)
         retrieved_scored: list[ScoredTurn] = retriever.retrieve(retrieval_episode, top_k=args.top_k)
         retrieved = [st.turn for st in retrieved_scored]
         if reader is not None:
@@ -360,6 +373,8 @@ def main() -> int:
             "max_episodes": args.max_episodes,
             "extraction": args.extraction,
             "extractor": getattr(extractor, "name", args.extraction),
+            "extraction_mode": "additive" if args.extraction != "none" else "off",
+            "neighbor_window": args.neighbor_window,
             "avg_memories_per_episode": (
                 round(sum(extracted_counts) / len(extracted_counts), 2)
                 if extracted_counts

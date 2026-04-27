@@ -79,8 +79,38 @@ def memories_to_episode(
     return replace(episode, turns=new_turns)
 
 
+def augment_episode_with_memories(
+    episode: OfficialEpisode, memories: Iterable[ExtractedMemory]
+) -> OfficialEpisode:
+    """Return an episode whose turns are ``original_turns ++ extracted_memories``.
+
+    This is the additive variant — the reader keeps its access to the raw
+    conversation while the retriever can also surface distilled memories.
+    Memory turns get session_idx ≥ max(original) + 1 and disambiguated
+    session_ids (``"<sid>::mem"``) so neighbor-expansion does not pull
+    raw turns next to a memory and vice-versa.
+    """
+    base = list(episode.turns)
+    next_turn_idx = len(base)
+    mem_turns: list[OfficialTurn] = []
+    for i, m in enumerate(memories):
+        mem_turns.append(
+            OfficialTurn(
+                session_id=f"{m.session_id}::mem",
+                session_idx=m.session_idx,
+                turn_idx=next_turn_idx + i,
+                role=m.role,
+                content=m.text,
+                session_date=m.session_date,
+                has_answer=False,
+            )
+        )
+    return replace(episode, turns=tuple(base + mem_turns))
+
+
 __all__ = [
     "ExtractedMemory",
     "MemoryExtractor",
+    "augment_episode_with_memories",
     "memories_to_episode",
 ]

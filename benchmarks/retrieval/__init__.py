@@ -7,11 +7,13 @@ be composed (RRF fusion, reranker post-pass) to build production pipelines.
 from benchmarks.retrieval.base import Retriever, ScoredTurn
 from benchmarks.retrieval.bm25 import BM25Retriever
 from benchmarks.retrieval.dense import DenseRetriever
+from benchmarks.retrieval.neighbors import NeighborExpander
 from benchmarks.retrieval.rrf import RRFRetriever
 
 __all__ = [
     "BM25Retriever",
     "DenseRetriever",
+    "NeighborExpander",
     "RRFRetriever",
     "Retriever",
     "ScoredTurn",
