@@ -8,6 +8,18 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added — LLM-based multi-signal fusion reranker (Phase 5 of 90%+ plan)
 
+**Measured: 56.6 % on LongMemEval oracle (n=500) — NEW SOTA, +2.8pt over v0.19.**
+
+Per-type (vs v0.19 baseline):
+- temporal-reasoning: 45.1 % (+6.7pt)
+- multi-session:      42.9 % (+6.1pt)
+- knowledge-update:   65.4 % (-2.5pt)
+- single-session-assistant: 96.4 % (flat)
+- single-session-user:      85.7 % (-1.4pt)
+- single-session-preference:  3.3 % (judge bottleneck, unchanged)
+
+Wall: ~34 min on T4 (warm caches from v0.19/v0.20).
+
 - **`benchmarks/fusion/`** — `LLMFusionReranker` wraps any base retriever
   and re-ranks its top-N candidates via a single gpt-4o-mini call.
   The model is shown the question, `question_date`, `question_type`
