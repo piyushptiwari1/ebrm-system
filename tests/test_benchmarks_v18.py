@@ -15,8 +15,11 @@ import numpy as np
 import pytest
 from benchmarks.datasets.longmemeval_official import OfficialEpisode, OfficialTurn
 from benchmarks.embedders.hash import HashEmbedder
-from benchmarks.retrieval import BM25Retriever, DenseRetriever, RRFRetriever
+from benchmarks.retrieval import DenseRetriever, RRFRetriever
 from benchmarks.retrieval.base import Retriever, ScoredTurn
+
+bm25 = pytest.importorskip("rank_bm25", reason="BM25Retriever needs rank-bm25")
+from benchmarks.retrieval import BM25Retriever  # noqa: E402
 
 
 def _episode(turn_contents: list[str], question: str) -> OfficialEpisode:
