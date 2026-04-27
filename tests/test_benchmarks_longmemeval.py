@@ -10,8 +10,10 @@ from benchmarks.longmemeval import (
     MemoryFact,
     default_memory,
     hash_embed,
+    load_longmemeval_jsonl,
     run_longmemeval,
     synth_longmemeval,
+    write_results_json,
 )
 
 from ebrm_system.memory import TieredMemory, TieredMemoryConfig
@@ -130,3 +132,124 @@ class TestRunLongMemEval:
         mem = default_memory(in_dim=128)
         assert mem.config.in_dim == 128
         assert isinstance(mem, TieredMemory)
+
+
+class TestLoadJsonl:
+    def test_round_trip_with_synthetic_export(self, tmp_path) -> None:
+        import json as _json
+
+        eps = synth_longmemeval(seed=11, num_episodes=6)
+        path = tmp_path / "lme.jsonl"
+        with path.open("w", encoding="utf-8") as fh:
+            for ep in eps:
+                fh.write(
+                    _json.dumps(
+                        {
+                            "id": ep.id,
+                            "question": ep.question,
+                            "answer": ep.answer,
+                            "question_type": ep.question_type,
+                            "facts": [
+                                {
+                                    "text": f.text,
+                                    "session": f.session,
+                                    "speaker": f.speaker,
+                                    "superseded_by": f.superseded_by,
+                                }
+                                for f in ep.facts
+                            ],
+                        }
+                    )
+                    + "\n"
+                )
+        loaded = load_longmemeval_jsonl(path)
+        assert len(loaded) == len(eps)
+        assert [e.id for e in loaded] == [e.id for e in eps]
+        assert [e.answer for e in loaded] == [e.answer for e in eps]
+
+    def test_missing_file_raises(self, tmp_path) -> None:
+        with pytest.raises(FileNotFoundError):
+            load_longmemeval_jsonl(tmp_path / "nope.jsonl")
+
+    def test_invalid_json_reports_line(self, tmp_path) -> None:
+        path = tmp_path / "bad.jsonl"
+        path.write_text("{not json\n", encoding="utf-8")
+        with pytest.raises(ValueError, match="invalid JSON"):
+            load_longmemeval_jsonl(path)
+
+    def test_unknown_question_type_rejected(self, tmp_path) -> None:
+        import json as _json
+
+        path = tmp_path / "bad.jsonl"
+        path.write_text(
+            _json.dumps(
+                {
+                    "id": "x",
+                    "question": "?",
+                    "answer": "a",
+                    "question_type": "made-up-type",
+                    "facts": [],
+                }
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match="question_type"):
+            load_longmemeval_jsonl(path)
+
+    def test_missing_required_field_rejected(self, tmp_path) -> None:
+        import json as _json
+
+        path = tmp_path / "bad.jsonl"
+        path.write_text(_json.dumps({"id": "x"}) + "\n", encoding="utf-8")
+        with pytest.raises(ValueError, match="missing required field"):
+            load_longmemeval_jsonl(path)
+
+    def test_empty_lines_skipped(self, tmp_path) -> None:
+        import json as _json
+
+        path = tmp_path / "lme.jsonl"
+        good = _json.dumps(
+            {
+                "id": "x",
+                "question": "?",
+                "answer": "a",
+                "question_type": "single-session-user",
+                "facts": [{"text": "t", "session": 0, "speaker": "user"}],
+            }
+        )
+        path.write_text(f"\n{good}\n\n", encoding="utf-8")
+        loaded = load_longmemeval_jsonl(path)
+        assert len(loaded) == 1
+
+
+class TestWriteResults:
+    def test_writes_stable_schema(self, tmp_path) -> None:
+        import json as _json
+
+        mem = default_memory(in_dim=64)
+        eps = synth_longmemeval(seed=0, num_episodes=5)
+        result = run_longmemeval(eps, mem, embed_dim=64)
+        out = tmp_path / "results" / "lme.json"
+        write_results_json(result, out, metadata={"run": "test"})
+        assert out.exists()
+        payload = _json.loads(out.read_text(encoding="utf-8"))
+        assert set(payload.keys()) >= {
+            "total",
+            "correct",
+            "accuracy",
+            "accuracy_by_type",
+            "per_type_counts",
+            "details",
+            "metadata",
+        }
+        assert payload["total"] == 5
+        assert payload["metadata"]["run"] == "test"
+        assert isinstance(payload["details"], list)
+
+    def test_creates_parent_directories(self, tmp_path) -> None:
+        mem = default_memory(in_dim=64)
+        result = run_longmemeval([], mem, embed_dim=64)
+        out = tmp_path / "deep" / "nested" / "path" / "lme.json"
+        write_results_json(result, out)
+        assert out.exists()

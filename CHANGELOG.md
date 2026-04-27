@@ -4,6 +4,34 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.14.0] - 2026-04-27
+
+### Added
+
+- **Real LongMemEval JSONL adapter** (`benchmarks.longmemeval.load_longmemeval_jsonl`):
+  strict JSONL loader for the official LongMemEval dataset format. Validates
+  required fields (`id`, `question`, `answer`, `question_type`, `facts`),
+  enforces the five canonical `question_type` values, validates each fact's
+  `speaker` (`user`/`assistant`), and supports optional `superseded_by` for
+  knowledge-update episodes. Errors include the source path and line number.
+- **Stable results serializer** (`benchmarks.longmemeval.write_results_json`):
+  writes a stable JSON schema (`total`, `correct`, `accuracy`,
+  `accuracy_by_type`, `per_type_counts`, `details`, optional `metadata`) and
+  auto-creates parent directories.
+- **Production CLI runner** (`scripts/run_longmemeval.py`): argparse-driven
+  entry point with `--jsonl`, `--num`, `--seed`, `--dim`, `--top-k`, `--out`.
+  Captures full reproducibility metadata (ebrm-system version, Python
+  version, platform, source, embed_dim, top_k, memory config, post-run
+  memory stats, UTC timestamp).
+- **First published baseline**: `benchmarks/results/longmemeval-v0.14.0.json`
+  records 200-episode synthetic-harness results with the hash-projection
+  embedder. This is the floor that future trained projectors must beat.
+
+### Notes
+
+- Python 3.10 compatibility verified: the runner uses
+  `datetime.now(timezone.utc)` (not the 3.11+ `datetime.UTC` alias).
+
 ## [0.13.0] - 2026-04-27
 
 ### Added
