@@ -244,11 +244,15 @@ class HierarchicalLatentReasoner:
             refined_q = build_refined_question(question, critiques, self.config.refinement)
             refined_pred = self.classifier.classify(refined_q)
             refined_budget = scale_budget(refined_pred, self.config.compute_profile)
+            mcts_seed: LatentT | None = None
+            if self.config.refinement.use_mcts_seed and self.config.mcts is not None:
+                mcts_seed = self._mcts_top1_latent(all_traces)
             extra_traces, _ = self._reason_once(
                 refined_q,
                 refined_pred,
                 refined_budget,
                 seed_offset=(round_idx + 1) * 1009,
+                seed_latent=mcts_seed,
             )
             all_traces.extend(extra_traces)
             n_rounds += 1
@@ -309,14 +313,21 @@ class HierarchicalLatentReasoner:
         budget: ScaledBudget,
         *,
         seed_offset: int,
+        seed_latent: LatentT | None = None,
     ) -> tuple[list[TraceItem], VerifierChain]:
         """Run encode → generate → decode → verify exactly once.
 
         Returns ``(traces, chain)``. The chain is returned so the caller can
         check whether verifiers were available for the routed intent.
+
+        When ``seed_latent`` is provided, it overrides the encoder output
+        (used by MCTS-seeded refinement rounds, v0.15+).
         """
-        seed_latent = self._as_float32(self.encoder(question))
-        seed_latent = self._maybe_recurse_latent(seed_latent)
+        if seed_latent is None:
+            seed_latent = self._as_float32(self.encoder(question))
+            seed_latent = self._maybe_recurse_latent(seed_latent)
+        else:
+            seed_latent = self._as_float32(seed_latent)
         cand_cfg = CandidateConfig(
             num_candidates=budget.num_candidates,
             num_steps=budget.num_steps,
@@ -378,6 +389,37 @@ class HierarchicalLatentReasoner:
             config=cfg,
         )
         return [traces[i] for i in survivors]
+
+    def _mcts_top1_latent(self, traces: list[TraceItem]) -> LatentT | None:
+        """Return the MCTS top-1 latent for seeding refinement (v0.15+).
+
+        Runs the same MCTS configuration as ``_apply_mcts`` but only to
+        identify the highest-ranked candidate. Returns ``None`` if MCTS
+        is disabled or there are no traces to rank.
+        """
+        cfg = self.config.mcts
+        if cfg is None or not traces:
+            return None
+        if self.mcts_value_fn is not None:
+            value_fn = self.mcts_value_fn
+
+            def _vfn(i: int) -> float:
+                return float(value_fn(traces[i]))
+        else:
+            energies = np.array([t.energy for t in traces], dtype=np.float64)
+            e_min = float(energies.min())
+
+            def _vfn(i: int) -> float:
+                return float(1.0 / (1.0 + (traces[i].energy - e_min)))
+
+        result = mcts_select(
+            [t.latent for t in traces],
+            _vfn,
+            config=cfg,
+        )
+        if not result.ranking:
+            return None
+        return traces[result.ranking[0]].latent
 
     def _apply_mcts(self, traces: list[TraceItem]) -> list[TraceItem]:
         """Re-rank candidates with ReST-MCTS* (no-op if disabled).

@@ -37,6 +37,12 @@ class RefinementConfig:
     max_critiques: int = 3
     """Cap how many distinct rejection reasons feed into the prompt."""
 
+    use_mcts_seed: bool = False
+    """When True and MCTS is configured on the reasoner, seed the next
+    refinement round's Langevin sampler from the MCTS top-1 latent of the
+    accumulated trace pool, instead of re-encoding only the augmented
+    question. Applies to rounds >= 1; round 0 always uses the encoder."""
+
     template: str = (
         "{question}\n\n"
         "[Critique of previous attempt(s)]\n"
