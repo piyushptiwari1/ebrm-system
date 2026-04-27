@@ -3,7 +3,32 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.18.0] - 2026-04-27
 
+### Added — hybrid retrieval (Phase 2 of 90%+ plan)
+
+- **`benchmarks/retrieval/`** package — pluggable `Retriever` Protocol
+  with four production-grade implementations:
+  - `DenseRetriever` (cosine top-k over any `Embedder`)
+  - `BM25Retriever` (`rank-bm25`, lower-cased alphanumeric tokenizer,
+    per-episode index)
+  - `RRFRetriever` (parameter-free Reciprocal Rank Fusion, `k=60` per
+    Cormack et al. 2009 — the de-facto hybrid baseline)
+  - `CrossEncoderReranker` (default `BAAI/bge-reranker-v2-m3`, the
+    SOTA multilingual reranker on MTEB as of 2024-2025)
+- **`scripts/run_longmemeval_official.py`** — new CLI flags:
+  `--retriever {dense,bm25,hybrid}` (default: hybrid),
+  `--reranker {none,bge}` (default: none), `--rrf-k`,
+  `--per-retriever-k`, `--rerank-candidate-k`. Results JSON now records
+  retriever name and per-question retrieval scores for diagnostics.
+- **`pyproject.toml`** — `rank-bm25>=0.2.2` added to the `embedders` extra.
+- **`tests/test_benchmarks_v18.py`** — 16 new tests (DenseRetriever,
+  BM25Retriever, RRFRetriever, reranker with mocked sentence-transformers).
+
+### Notes
+
+- 338 tests pass, ruff/mypy clean, 95 % coverage.
+- Full LongMemEval results recorded after v0.18 ships and runs on VM.
 ## [0.17.0] - 2026-04-28
 
 ### Added — real semantics for LongMemEval (Phase 1 of 90%+ plan)

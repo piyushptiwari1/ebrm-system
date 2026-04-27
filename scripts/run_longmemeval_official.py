@@ -1,22 +1,23 @@
 """Production runner for the OFFICIAL LongMemEval dataset.
 
-Pipeline (v0.17, dense-only):
+Pipeline (v0.18, hybrid retrieval + optional cross-encoder reranker):
 1. Load ``longmemeval_*.json`` via ``benchmarks.datasets.load_longmemeval_official``.
-2. For each episode, embed every turn (cached) and the question.
-3. Cosine top-K retrieval over turns.
-4. Feed retrieved turns + question to ``AzureOpenAIReader``.
-5. Grade with ``AzureOpenAIJudge`` (abstention via deterministic detector).
-6. Write a stable JSON with full metadata to ``benchmarks/results/``.
-
-Subsequent releases (v0.18+) add BM25, reranking, extraction, time-aware
-filtering, etc., but keep this CLI shape.
+2. Build the requested retriever:
+     - ``dense``  — pure dense top-k over the chosen embedder.
+     - ``bm25``   — pure BM25 over a per-episode index.
+     - ``hybrid`` — RRF fusion of dense + BM25 (default).
+   Optionally wrap with ``--reranker bge`` to add a cross-encoder pass.
+3. Feed retrieved turns + question to ``AzureOpenAIReader``.
+4. Grade with ``AzureOpenAIJudge`` (abstention via deterministic detector).
+5. Write a stable JSON with full metadata to ``benchmarks/results/``.
 
 Example:
     AZURE_OPENAI_API_KEY=... \\
     python scripts/run_longmemeval_official.py \\
         --dataset data/longmemeval/longmemeval_oracle.json \\
-        --embedder azure --top-k 5 \\
-        --out benchmarks/results/longmemeval-oracle-v0.17.0.json
+        --embedder azure --retriever hybrid --reranker bge \\
+        --top-k 5 \\
+        --out benchmarks/results/longmemeval-oracle-v0.18.0.json
 """
 
 from __future__ import annotations
@@ -30,18 +31,22 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
-import numpy as np
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 
 from benchmarks.datasets import (  # noqa: E402
     OfficialEpisode,
-    OfficialTurn,
     episodes_iter_question_types,
     load_longmemeval_official,
 )
 from benchmarks.embedders.hash import HashEmbedder  # noqa: E402
+from benchmarks.retrieval import (  # noqa: E402
+    BM25Retriever,
+    DenseRetriever,
+    Retriever,
+    RRFRetriever,
+    ScoredTurn,
+)
 
 from ebrm_system import __version__ as ebrm_version  # noqa: E402
 
@@ -64,23 +69,44 @@ def _build_embedder(name: str, *, cache_dir: Path):
     raise ValueError(f"unknown embedder {name!r}")
 
 
-def _topk_turns(
-    embedder,
-    episode: OfficialEpisode,
+def _build_retriever(
     *,
-    top_k: int,
-) -> list[OfficialTurn]:
-    if not episode.turns:
-        return []
-    turn_texts = [t.content for t in episode.turns]
-    turn_vecs = embedder.embed(turn_texts)
-    q_vec = embedder.embed([episode.question])[0]
-    # Vectors are L2-normalised — cosine == dot.
-    scores = turn_vecs @ q_vec
-    k = min(top_k, len(scores))
-    top_idx = np.argpartition(-scores, k - 1)[:k]
-    top_idx = top_idx[np.argsort(-scores[top_idx])]
-    return [episode.turns[int(i)] for i in top_idx]
+    retriever_name: str,
+    embedder_name: str,
+    cache_dir: Path,
+    rrf_k: int,
+    per_retriever_k: int,
+) -> Retriever:
+    if retriever_name == "dense":
+        return DenseRetriever(_build_embedder(embedder_name, cache_dir=cache_dir))
+    if retriever_name == "bm25":
+        return BM25Retriever()
+    if retriever_name == "hybrid":
+        return RRFRetriever(
+            [
+                DenseRetriever(_build_embedder(embedder_name, cache_dir=cache_dir)),
+                BM25Retriever(),
+            ],
+            rrf_k=rrf_k,
+            per_retriever_k=per_retriever_k,
+        )
+    raise ValueError(f"unknown retriever {retriever_name!r}")
+
+
+def _maybe_wrap_reranker(
+    base: Retriever,
+    *,
+    reranker_name: str,
+    candidate_k: int,
+) -> Retriever:
+    if reranker_name == "none":
+        return base
+    if reranker_name == "bge":
+        from benchmarks.retrieval.reranker import CrossEncoderReranker
+
+        model = os.environ.get("EBRM_RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
+        return CrossEncoderReranker(base, model_name=model, candidate_k=candidate_k)
+    raise ValueError(f"unknown reranker {reranker_name!r}")
 
 
 def _aggregate_summary(per_q: list[dict], episodes: list[OfficialEpisode]) -> dict:
@@ -117,7 +143,37 @@ def main() -> int:
         "--embedder",
         choices=["hash", "bge", "azure"],
         default="azure",
-        help="Embedder backend (default: azure).",
+        help="Embedder backend used by dense / hybrid retrievers (default: azure).",
+    )
+    p.add_argument(
+        "--retriever",
+        choices=["dense", "bm25", "hybrid"],
+        default="hybrid",
+        help="Retriever (default: hybrid = RRF over dense + BM25).",
+    )
+    p.add_argument(
+        "--reranker",
+        choices=["none", "bge"],
+        default="none",
+        help="Optional cross-encoder reranker on top of the retriever (default: none).",
+    )
+    p.add_argument(
+        "--rrf-k",
+        type=int,
+        default=60,
+        help="RRF constant used by hybrid (default: 60, per Cormack et al. 2009).",
+    )
+    p.add_argument(
+        "--per-retriever-k",
+        type=int,
+        default=20,
+        help="How many candidates each base retriever returns inside hybrid.",
+    )
+    p.add_argument(
+        "--rerank-candidate-k",
+        type=int,
+        default=20,
+        help="Number of candidates fed to the cross-encoder reranker.",
     )
     p.add_argument("--top-k", type=int, default=5)
     p.add_argument(
@@ -162,8 +218,22 @@ def main() -> int:
         flush=True,
     )
 
-    print(f"[embed] backend={args.embedder}", flush=True)
-    embedder = _build_embedder(args.embedder, cache_dir=cache_dir)
+    print(
+        f"[retriever] {args.retriever}  embedder={args.embedder}  reranker={args.reranker}",
+        flush=True,
+    )
+    base_retriever = _build_retriever(
+        retriever_name=args.retriever,
+        embedder_name=args.embedder,
+        cache_dir=cache_dir,
+        rrf_k=args.rrf_k,
+        per_retriever_k=args.per_retriever_k,
+    )
+    retriever = _maybe_wrap_reranker(
+        base_retriever,
+        reranker_name=args.reranker,
+        candidate_k=args.rerank_candidate_k,
+    )
 
     reader = None
     if args.reader == "azure":
@@ -180,7 +250,8 @@ def main() -> int:
     per_q: list[dict] = []
     t0 = time.time()
     for i, ep in enumerate(episodes):
-        retrieved = _topk_turns(embedder, ep, top_k=args.top_k)
+        retrieved_scored: list[ScoredTurn] = retriever.retrieve(ep, top_k=args.top_k)
+        retrieved = [st.turn for st in retrieved_scored]
         if reader is not None:
             pred = reader.read(ep, retrieved)
         else:
@@ -210,6 +281,7 @@ def main() -> int:
                 "judge_raw": judge_raw,
                 "retrieved_session_ids": [t.session_id for t in retrieved],
                 "retrieved_n": len(retrieved),
+                "retrieval_scores": [round(st.score, 4) for st in retrieved_scored],
             }
         )
         if (i + 1) % 25 == 0 or (i + 1) == len(episodes):
@@ -241,11 +313,14 @@ def main() -> int:
             "python_version": platform.python_version(),
             "platform": platform.platform(),
             "dataset": str(args.dataset),
-            "embedder": getattr(embedder, "name", args.embedder),
-            "embedder_dim": getattr(embedder, "dim", None),
+            "embedder": args.embedder,
+            "retriever": retriever.name,
             "reader": getattr(reader, "name", args.reader),
             "judge": getattr(judge, "name", args.judge),
             "top_k": args.top_k,
+            "rrf_k": args.rrf_k,
+            "per_retriever_k": args.per_retriever_k,
+            "rerank_candidate_k": args.rerank_candidate_k,
             "max_episodes": args.max_episodes,
             "elapsed_seconds": round(elapsed_total, 2),
             "ran_at_utc": datetime.now(timezone.utc).isoformat(),
