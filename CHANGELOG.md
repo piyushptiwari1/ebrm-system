@@ -3,6 +3,65 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.20.0] - 2026-04-27
+
+### Added — temporal + entity rerankers (Phase 4 of 90%+ plan)
+
+- **`benchmarks/temporal/`** — `parse_lme_date()` and a
+  `TemporalReranker` retriever wrapper. Combines normalised semantic
+  score with `exp(-days_apart / decay_days)` recency relative to
+  `question_date` to break ties on temporal-reasoning questions.
+- **`benchmarks/entity/`** — regex-based `extract_entities()` (quoted
+  phrases, capitalised proper nouns, all-caps acronyms, numbers /
+  dates) and an `EntityReranker` that boosts retrieved turns
+  mentioning question entities. No new NLP dependency.
+- **`scripts/run_longmemeval_official.py`** — new flags
+  `--temporal-rerank` (with `--temporal-alpha`,
+  `--temporal-decay-days`) and `--entity-rerank`
+  (with `--entity-alpha`). Both sit *after* the cross-encoder so the
+  bge ranker still reorders the raw turns first.
+- **`tests/test_benchmarks_v20.py`** — 16 new tests covering date
+  parsing, temporal reranker (recency tie-break, malformed dates,
+  empty), entity extractor (quoted/proper/acronym/number/starter-word
+  filter), and entity reranker (boost, no-entity passthrough, empty).
+
+### CI fix
+
+- `tests/test_benchmarks_v18.py` now uses `pytest.importorskip` on
+  `rank_bm25` so the lean `[dev]` CI environment skips BM25 tests
+  cleanly instead of failing with `ImportError`.
+
+### Notes
+
+- 369 tests pass, ruff/mypy clean, 95 % coverage.
+
+### Measured — LongMemEval oracle (full 500 episodes, VM, T4)
+
+Honest negative result. We ran v0.19's pipeline three additional times,
+adding the new rerankers:
+
+| Configuration                                 | Overall | temporal | multi-sess | knowledge | preference |
+| --------------------------------------------- | ------- | -------- | ---------- | --------- | ---------- |
+| **v0.19 baseline (no temporal / entity)**     | **53.8 %** | 38.4 %   | **36.8 %** | **67.9 %** | 3.3 %     |
+| v0.20 + temporal (α=0.3) + entity (α=0.25)    | 52.2 %  | 39.1 %   | 33.1 %     | 62.8 %    | 3.3 %     |
+| v0.20 + temporal (α=0.2) + entity (α=0.10)    | 52.6 %  | **39.9 %** | 33.8 %   | 64.1 %    | 3.3 %     |
+| v0.20 + temporal-only (α=0.2)                 | 52.2 %  | 37.6 %   | 35.3 %    | 62.8 %    | 0.0 %     |
+
+Result files committed at `benchmarks/results/longmemeval-oracle-v0.20.0*.json`.
+
+**Why the linear blend hurts**: `BAAI/bge-reranker-v2-m3` already
+implicitly weights temporal + entity signals from its training
+distribution. A hand-tuned linear blend on top rotates its (already
+strong) ranking the wrong way — most visibly on knowledge-update
+(question_date proximity wrongly elevates stale info the bge ranker
+had correctly downweighted). The temporal reranker buys ~+1.5 pt on
+temporal-reasoning at the cost of −5 pt on knowledge-update.
+
+**Decision**: ship v0.20 with both rerankers as **opt-in flags,
+default OFF**. The infrastructure stays for v0.21, where the right
+fusion is LLM-based (let the LLM judge temporal + entity relevance
+during reranking) rather than a hand-tuned linear blend.
+
 ## [0.19.0] - 2026-04-27
 
 ### Added — LLM memory extraction (Phase 3 of 90%+ plan)
