@@ -42,6 +42,7 @@ from benchmarks.datasets import (  # noqa: E402
     load_longmemeval_official,
 )
 from benchmarks.embedders.hash import HashEmbedder  # noqa: E402
+from benchmarks.entity import EntityReranker  # noqa: E402
 from benchmarks.extraction import (  # noqa: E402
     ExtractedMemory,
     MemoryExtractor,
@@ -55,6 +56,7 @@ from benchmarks.retrieval import (  # noqa: E402
     RRFRetriever,
     ScoredTurn,
 )
+from benchmarks.temporal import TemporalReranker  # noqa: E402
 
 from ebrm_system import __version__ as ebrm_version  # noqa: E402
 
@@ -201,6 +203,34 @@ def main() -> int:
         help="Cap number of episodes (smoke testing). Default = all.",
     )
     p.add_argument(
+        "--temporal-rerank",
+        action="store_true",
+        help="Apply temporal reranker (combine semantic + recency to question_date).",
+    )
+    p.add_argument(
+        "--temporal-alpha",
+        type=float,
+        default=0.3,
+        help="Weight on the temporal score (default 0.3).",
+    )
+    p.add_argument(
+        "--temporal-decay-days",
+        type=float,
+        default=30.0,
+        help="Recency decay scale in days (default 30).",
+    )
+    p.add_argument(
+        "--entity-rerank",
+        action="store_true",
+        help="Apply entity reranker (boost turns mentioning question entities).",
+    )
+    p.add_argument(
+        "--entity-alpha",
+        type=float,
+        default=0.25,
+        help="Weight on the entity-match score (default 0.25).",
+    )
+    p.add_argument(
         "--neighbor-window",
         type=int,
         default=0,
@@ -270,6 +300,22 @@ def main() -> int:
         reranker_name=args.reranker,
         candidate_k=args.rerank_candidate_k,
     )
+    if args.entity_rerank:
+        retriever = EntityReranker(
+            retriever, alpha=args.entity_alpha, candidate_k=args.rerank_candidate_k
+        )
+        print(f"[entity] alpha={args.entity_alpha}", flush=True)
+    if args.temporal_rerank:
+        retriever = TemporalReranker(
+            retriever,
+            alpha=args.temporal_alpha,
+            decay_days=args.temporal_decay_days,
+            candidate_k=args.rerank_candidate_k,
+        )
+        print(
+            f"[temporal] alpha={args.temporal_alpha} decay={args.temporal_decay_days}d",
+            flush=True,
+        )
     if args.neighbor_window > 0:
         retriever = NeighborExpander(retriever, window=args.neighbor_window)
         print(f"[neighbors] window={args.neighbor_window}", flush=True)
@@ -375,6 +421,11 @@ def main() -> int:
             "extractor": getattr(extractor, "name", args.extraction),
             "extraction_mode": "additive" if args.extraction != "none" else "off",
             "neighbor_window": args.neighbor_window,
+            "temporal_rerank": args.temporal_rerank,
+            "temporal_alpha": args.temporal_alpha,
+            "temporal_decay_days": args.temporal_decay_days,
+            "entity_rerank": args.entity_rerank,
+            "entity_alpha": args.entity_alpha,
             "avg_memories_per_episode": (
                 round(sum(extracted_counts) / len(extracted_counts), 2)
                 if extracted_counts

@@ -3,6 +3,38 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.20.0] - 2026-04-27
+
+### Added — temporal + entity rerankers (Phase 4 of 90%+ plan)
+
+- **`benchmarks/temporal/`** — `parse_lme_date()` and a
+  `TemporalReranker` retriever wrapper. Combines normalised semantic
+  score with `exp(-days_apart / decay_days)` recency relative to
+  `question_date` to break ties on temporal-reasoning questions.
+- **`benchmarks/entity/`** — regex-based `extract_entities()` (quoted
+  phrases, capitalised proper nouns, all-caps acronyms, numbers /
+  dates) and an `EntityReranker` that boosts retrieved turns
+  mentioning question entities. No new NLP dependency.
+- **`scripts/run_longmemeval_official.py`** — new flags
+  `--temporal-rerank` (with `--temporal-alpha`,
+  `--temporal-decay-days`) and `--entity-rerank`
+  (with `--entity-alpha`). Both sit *after* the cross-encoder so the
+  bge ranker still reorders the raw turns first.
+- **`tests/test_benchmarks_v20.py`** — 16 new tests covering date
+  parsing, temporal reranker (recency tie-break, malformed dates,
+  empty), entity extractor (quoted/proper/acronym/number/starter-word
+  filter), and entity reranker (boost, no-entity passthrough, empty).
+
+### CI fix
+
+- `tests/test_benchmarks_v18.py` now uses `pytest.importorskip` on
+  `rank_bm25` so the lean `[dev]` CI environment skips BM25 tests
+  cleanly instead of failing with `ImportError`.
+
+### Notes
+
+- 369 tests pass, ruff/mypy clean, 95 % coverage.
+- Full LongMemEval results recorded after v0.20 ships and runs on VM.
 ## [0.19.0] - 2026-04-27
 
 ### Added — LLM memory extraction (Phase 3 of 90%+ plan)
