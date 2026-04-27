@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.16.0] - 2026-04-27
+
+### Added
+
+- **`docs/roadmap.md`** — single-page onboarding-grade reference mapping
+  every shipped release (v0.1 → v0.16) to the research papers that
+  motivated it. Linked from the MkDocs site nav.
+
+### Notes
+
+- Documentation-only release; no code changes.
+- 294 tests pass, mypy/ruff clean.
+
 ## [0.15.0] - 2026-04-27
 
 ### Added

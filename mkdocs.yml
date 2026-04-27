@@ -50,5 +50,6 @@ nav:
       - Verifiers: guide-verifiers.md
       - Voting: guide-voting.md
   - API reference: api.md
+  - Roadmap: roadmap.md
   - ADRs:
       - ADR-001 Architecture: adr-001-architecture.md
