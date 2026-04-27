@@ -3,6 +3,31 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.19.0] - 2026-04-27
+
+### Added — LLM memory extraction (Phase 3 of 90%+ plan)
+
+- **`benchmarks/extraction/`** package — pluggable `MemoryExtractor`
+  Protocol with an `AzureLLMExtractor` (Mem0-v3-style ADD-only). Each
+  session is distilled into a list of atomic, self-contained
+  `ExtractedMemory` items via a single LLM call (gpt-4o-mini), cached
+  on disk by `sha256(deployment + session_payload)` so a 500-episode
+  run only pays the extraction cost once.
+- **`memories_to_episode()`** — wraps extracted memories as a synthetic
+  `OfficialEpisode` so every existing retriever (dense, BM25, RRF,
+  reranker) and the reader continue to work unchanged.
+- **`scripts/run_longmemeval_official.py`** — new `--extraction
+  {none,azure}` flag (default: none). Result JSON now records the
+  extractor name and average memories-per-episode.
+- **`tests/test_benchmarks_v19.py`** — 8 new tests covering the
+  `MemoryExtractor` protocol, episode wrapping, and the Azure extractor
+  with mocked OpenAI client (caching, JSON parsing, malformed payloads,
+  per-session grouping, empty episodes).
+
+### Notes
+
+- 346 tests pass, ruff/mypy clean, 95 % coverage.
+- Full LongMemEval results recorded after v0.19 ships and runs on VM.
 ## [0.18.0] - 2026-04-27
 
 ### Added — hybrid retrieval (Phase 2 of 90%+ plan)
