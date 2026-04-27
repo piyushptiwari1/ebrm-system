@@ -43,6 +43,7 @@ from benchmarks.datasets import (  # noqa: E402
 )
 from benchmarks.embedders.hash import HashEmbedder  # noqa: E402
 from benchmarks.entity import EntityReranker  # noqa: E402
+from benchmarks.fusion import LLMFusionReranker  # noqa: E402
 from benchmarks.extraction import (  # noqa: E402
     ExtractedMemory,
     MemoryExtractor,
@@ -231,6 +232,20 @@ def main() -> int:
         help="Weight on the entity-match score (default 0.25).",
     )
     p.add_argument(
+        "--fusion-rerank",
+        action="store_true",
+        help=(
+            "Apply LLM-based multi-signal fusion reranker (gpt-4o-mini ranks "
+            "top-N candidates jointly considering semantic + temporal + entity)."
+        ),
+    )
+    p.add_argument(
+        "--fusion-candidate-k",
+        type=int,
+        default=20,
+        help="Number of candidates fed to the fusion reranker (default 20).",
+    )
+    p.add_argument(
         "--neighbor-window",
         type=int,
         default=0,
@@ -314,6 +329,16 @@ def main() -> int:
         )
         print(
             f"[temporal] alpha={args.temporal_alpha} decay={args.temporal_decay_days}d",
+            flush=True,
+        )
+    if args.fusion_rerank:
+        retriever = LLMFusionReranker(
+            base=retriever,
+            candidate_k=args.fusion_candidate_k,
+            cache_dir=cache_dir / "fusion",
+        )
+        print(
+            f"[fusion] candidate_k={args.fusion_candidate_k}",
             flush=True,
         )
     if args.neighbor_window > 0:
@@ -426,6 +451,8 @@ def main() -> int:
             "temporal_decay_days": args.temporal_decay_days,
             "entity_rerank": args.entity_rerank,
             "entity_alpha": args.entity_alpha,
+            "fusion_rerank": args.fusion_rerank,
+            "fusion_candidate_k": args.fusion_candidate_k,
             "avg_memories_per_episode": (
                 round(sum(extracted_counts) / len(extracted_counts), 2)
                 if extracted_counts

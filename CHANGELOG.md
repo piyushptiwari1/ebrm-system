@@ -3,6 +3,41 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [0.21.0] - 2026-04-28
+
+### Added — LLM-based multi-signal fusion reranker (Phase 5 of 90%+ plan)
+
+- **`benchmarks/fusion/`** — `LLMFusionReranker` wraps any base retriever
+  and re-ranks its top-N candidates via a single gpt-4o-mini call.
+  The model is shown the question, `question_date`, `question_type`
+  and the candidate excerpts (each tagged with its session date and
+  role) and returns a JSON ranking that jointly weighs semantic,
+  temporal and entity signals. Replaces v0.20's hand-tuned linear
+  blends, which had regressed because bge-reranker-v2-m3 already
+  encodes those signals and a static post-blend rotated the ranking
+  the wrong way.
+- Disk-cached on `sha256(deployment + question + question_date +
+  candidate_texts)` for reproducible reruns at zero marginal cost.
+- Robust to malformed responses: invalid / out-of-range / duplicate
+  indices are dropped, missing indices are backfilled in original
+  order, and transient API errors retry with exponential backoff.
+- **`scripts/run_longmemeval_official.py`** — new opt-in flag
+  `--fusion-rerank` (with `--fusion-candidate-k`, default 20). Stacks
+  *after* bge + temporal + entity so each layer can be ablated.
+  Default OFF — running the runner without the flag reproduces v0.19
+  exactly.
+- **`tests/test_benchmarks_v21.py`** — 8 new tests covering reranking
+  order, disk cache hit, malformed-response passthrough, invalid-index
+  sanitisation, retry-then-succeed, empty / single-candidate
+  passthrough, and `name` property.
+
+### Pages CI
+
+- Repository GitHub Pages site enabled via API so the `docs.yml`
+  workflow's `actions/configure-pages@v5` step no longer fails with
+  "Resource not accessible by integration" on first run.
+
 ## [0.20.0] - 2026-04-27
 
 ### Added — temporal + entity rerankers (Phase 4 of 90%+ plan)
