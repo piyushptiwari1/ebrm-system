@@ -36,9 +36,11 @@ projector when running for science.
 from __future__ import annotations
 
 import hashlib
+import json
 import random
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Literal
 
 import numpy as np
@@ -393,6 +395,135 @@ def default_memory(in_dim: int = 64) -> TieredMemory:
     )
 
 
+# --------------------------------------------------------------------------
+# Real-dataset adapter (JSONL) + result serialization
+# --------------------------------------------------------------------------
+
+
+def load_longmemeval_jsonl(path: str | Path) -> list[LongMemEpisode]:
+    """Load LongMemEval episodes from a JSONL file.
+
+    Each line must be a JSON object with at least::
+
+        {
+          "id": "<str>",
+          "question": "<str>",
+          "answer": "<str>",
+          "question_type": "<one of ALL_QUESTION_TYPES>",
+          "facts": [
+            {
+              "text": "<str>",
+              "session": <int>,
+              "speaker": "user" | "assistant",
+              "superseded_by": <int|null>   # optional
+            },
+            ...
+          ]
+        }
+
+    Unknown extra fields are ignored. Validation is strict: missing
+    required keys or unknown question types raise ``ValueError`` with the
+    offending line number, so dataset-format issues fail loud at load time
+    rather than silently distorting results.
+    """
+    p = Path(path)
+    if not p.exists():
+        raise FileNotFoundError(f"LongMemEval JSONL not found: {p}")
+    episodes: list[LongMemEpisode] = []
+    with p.open("r", encoding="utf-8") as fh:
+        for line_no, raw in enumerate(fh, start=1):
+            line = raw.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError as exc:
+                raise ValueError(f"{p}:{line_no}: invalid JSON ({exc})") from exc
+            try:
+                episodes.append(_parse_episode(obj))
+            except (KeyError, ValueError) as exc:
+                raise ValueError(f"{p}:{line_no}: {exc}") from exc
+    return episodes
+
+
+def _parse_episode(obj: dict[str, object]) -> LongMemEpisode:
+    for required in ("id", "question", "answer", "question_type", "facts"):
+        if required not in obj:
+            raise KeyError(f"missing required field {required!r}")
+    qt = obj["question_type"]
+    if qt not in ALL_QUESTION_TYPES:
+        raise ValueError(f"question_type {qt!r} not in {list(ALL_QUESTION_TYPES)}")
+    raw_facts = obj["facts"]
+    if not isinstance(raw_facts, list):
+        raise ValueError("facts must be a list")
+    facts: list[MemoryFact] = []
+    for i, raw_fact in enumerate(raw_facts):
+        if not isinstance(raw_fact, dict):
+            raise ValueError(f"facts[{i}] must be an object")
+        for required in ("text", "session", "speaker"):
+            if required not in raw_fact:
+                raise KeyError(f"facts[{i}] missing field {required!r}")
+        speaker = raw_fact["speaker"]
+        if speaker not in ("user", "assistant"):
+            raise ValueError(f"facts[{i}].speaker must be 'user' or 'assistant', got {speaker!r}")
+        facts.append(
+            MemoryFact(
+                text=str(raw_fact["text"]),
+                session=int(raw_fact["session"]),
+                speaker=speaker,  # type: ignore[arg-type]
+                superseded_by=(
+                    int(raw_fact["superseded_by"])
+                    if raw_fact.get("superseded_by") is not None
+                    else None
+                ),
+            )
+        )
+    return LongMemEpisode(
+        id=str(obj["id"]),
+        facts=tuple(facts),
+        question=str(obj["question"]),
+        answer=str(obj["answer"]),
+        question_type=qt,  # type: ignore[arg-type]
+    )
+
+
+def write_results_json(
+    result: LongMemRunResult,
+    path: str | Path,
+    *,
+    metadata: dict[str, object] | None = None,
+) -> None:
+    """Persist a run result as JSON.
+
+    The schema is stable: top-level keys are ``total``, ``correct``,
+    ``accuracy``, ``accuracy_by_type``, ``per_type_counts``, ``details``,
+    plus an optional ``metadata`` block (e.g. memory config, embed dim,
+    code version) for reproducibility.
+    """
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    payload: dict[str, object] = {
+        "total": result.total,
+        "correct": result.correct,
+        "accuracy": result.accuracy,
+        "accuracy_by_type": result.accuracy_by_type,
+        "per_type_counts": result.per_type_counts,
+        "details": [
+            {
+                "episode_id": d.episode_id,
+                "question_type": d.question_type,
+                "correct": d.correct,
+                "retrieved_top_k": d.retrieved_top_k,
+                "expected_answer": d.expected_answer,
+            }
+            for d in result.details
+        ],
+    }
+    if metadata:
+        payload["metadata"] = metadata
+    p.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+
+
 __all__ = [
     "ALL_QUESTION_TYPES",
     "EpisodeResult",
@@ -402,6 +533,8 @@ __all__ = [
     "QuestionType",
     "default_memory",
     "hash_embed",
+    "load_longmemeval_jsonl",
     "run_longmemeval",
     "synth_longmemeval",
+    "write_results_json",
 ]

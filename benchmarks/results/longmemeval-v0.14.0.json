@@ -1,0 +1,1442 @@
+{
+  "accuracy": 0.35,
+  "accuracy_by_type": {
+    "knowledge-update": 0.375,
+    "multi-session": 0.375,
+    "single-session-assistant": 0.175,
+    "single-session-user": 0.4,
+    "temporal-reasoning": 0.425
+  },
+  "correct": 70,
+  "details": [
+    {
+      "correct": true,
+      "episode_id": "sssu-0",
+      "expected_answer": "astronomy",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 1
+    },
+    {
+      "correct": true,
+      "episode_id": "sssa-1",
+      "expected_answer": "Montreal",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 2
+    },
+    {
+      "correct": true,
+      "episode_id": "ms-2",
+      "expected_answer": "astronomy",
+      "question_type": "multi-session",
+      "retrieved_top_k": 4
+    },
+    {
+      "correct": true,
+      "episode_id": "tr-3",
+      "expected_answer": "fencing",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-4",
+      "expected_answer": "Cape Town",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-5",
+      "expected_answer": "violin",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-6",
+      "expected_answer": "Reykjav\u00edk",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-7",
+      "expected_answer": "violin",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "tr-8",
+      "expected_answer": "baking",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ku-9",
+      "expected_answer": "Cape Town",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-10",
+      "expected_answer": "kitesurfing",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-11",
+      "expected_answer": "Helsinki",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-12",
+      "expected_answer": "rock climbing",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "tr-13",
+      "expected_answer": "astronomy",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-14",
+      "expected_answer": "Hanoi",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-15",
+      "expected_answer": "kitesurfing",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-16",
+      "expected_answer": "Kyoto",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-17",
+      "expected_answer": "kitesurfing",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "tr-18",
+      "expected_answer": "baking",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ku-19",
+      "expected_answer": "Montreal",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-20",
+      "expected_answer": "violin",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-21",
+      "expected_answer": "Montreal",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-22",
+      "expected_answer": "fencing",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-23",
+      "expected_answer": "baking",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ku-24",
+      "expected_answer": "Montreal",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-25",
+      "expected_answer": "pottery",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-26",
+      "expected_answer": "Cape Town",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-27",
+      "expected_answer": "rock climbing",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "tr-28",
+      "expected_answer": "violin",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-29",
+      "expected_answer": "Lisbon",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-30",
+      "expected_answer": "astronomy",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-31",
+      "expected_answer": "Cape Town",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-32",
+      "expected_answer": "astronomy",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "tr-33",
+      "expected_answer": "baking",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ku-34",
+      "expected_answer": "Cape Town",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-35",
+      "expected_answer": "baking",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "sssa-36",
+      "expected_answer": "Cape Town",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-37",
+      "expected_answer": "rock climbing",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-38",
+      "expected_answer": "kitesurfing",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ku-39",
+      "expected_answer": "Cape Town",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-40",
+      "expected_answer": "violin",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "sssa-41",
+      "expected_answer": "Cape Town",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ms-42",
+      "expected_answer": "violin",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-43",
+      "expected_answer": "kitesurfing",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-44",
+      "expected_answer": "Lisbon",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "sssu-45",
+      "expected_answer": "violin",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-46",
+      "expected_answer": "Lisbon",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-47",
+      "expected_answer": "chess",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "tr-48",
+      "expected_answer": "kitesurfing",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-49",
+      "expected_answer": "Tbilisi",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "sssu-50",
+      "expected_answer": "violin",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-51",
+      "expected_answer": "Kyoto",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ms-52",
+      "expected_answer": "violin",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-53",
+      "expected_answer": "astronomy",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ku-54",
+      "expected_answer": "Lisbon",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-55",
+      "expected_answer": "astronomy",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-56",
+      "expected_answer": "Montreal",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ms-57",
+      "expected_answer": "baking",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-58",
+      "expected_answer": "rock climbing",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ku-59",
+      "expected_answer": "Cape Town",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-60",
+      "expected_answer": "violin",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-61",
+      "expected_answer": "Reykjav\u00edk",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ms-62",
+      "expected_answer": "baking",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-63",
+      "expected_answer": "fencing",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-64",
+      "expected_answer": "Tbilisi",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "sssu-65",
+      "expected_answer": "baking",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-66",
+      "expected_answer": "Tbilisi",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ms-67",
+      "expected_answer": "pottery",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "tr-68",
+      "expected_answer": "baking",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-69",
+      "expected_answer": "Montreal",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-70",
+      "expected_answer": "pottery",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-71",
+      "expected_answer": "Hanoi",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-72",
+      "expected_answer": "rock climbing",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-73",
+      "expected_answer": "chess",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-74",
+      "expected_answer": "Cape Town",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-75",
+      "expected_answer": "rock climbing",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-76",
+      "expected_answer": "Hanoi",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-77",
+      "expected_answer": "chess",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-78",
+      "expected_answer": "pottery",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-79",
+      "expected_answer": "Montreal",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-80",
+      "expected_answer": "rock climbing",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-81",
+      "expected_answer": "Helsinki",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ms-82",
+      "expected_answer": "pottery",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-83",
+      "expected_answer": "astronomy",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-84",
+      "expected_answer": "Lisbon",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "sssu-85",
+      "expected_answer": "astronomy",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "sssa-86",
+      "expected_answer": "Lisbon",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ms-87",
+      "expected_answer": "rock climbing",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-88",
+      "expected_answer": "kitesurfing",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-89",
+      "expected_answer": "Reykjav\u00edk",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "sssu-90",
+      "expected_answer": "violin",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-91",
+      "expected_answer": "Hanoi",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-92",
+      "expected_answer": "rock climbing",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "tr-93",
+      "expected_answer": "violin",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-94",
+      "expected_answer": "Hanoi",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "sssu-95",
+      "expected_answer": "violin",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "sssa-96",
+      "expected_answer": "Montreal",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-97",
+      "expected_answer": "rock climbing",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-98",
+      "expected_answer": "pottery",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ku-99",
+      "expected_answer": "Montreal",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "sssu-100",
+      "expected_answer": "baking",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-101",
+      "expected_answer": "Hanoi",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-102",
+      "expected_answer": "chess",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "tr-103",
+      "expected_answer": "pottery",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-104",
+      "expected_answer": "Cape Town",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "sssu-105",
+      "expected_answer": "fencing",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-106",
+      "expected_answer": "Kyoto",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ms-107",
+      "expected_answer": "rock climbing",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "tr-108",
+      "expected_answer": "chess",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-109",
+      "expected_answer": "Cape Town",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-110",
+      "expected_answer": "pottery",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-111",
+      "expected_answer": "Helsinki",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ms-112",
+      "expected_answer": "rock climbing",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "tr-113",
+      "expected_answer": "violin",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-114",
+      "expected_answer": "Reykjav\u00edk",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-115",
+      "expected_answer": "violin",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-116",
+      "expected_answer": "Helsinki",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-117",
+      "expected_answer": "fencing",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-118",
+      "expected_answer": "baking",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ku-119",
+      "expected_answer": "Lisbon",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "sssu-120",
+      "expected_answer": "fencing",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-121",
+      "expected_answer": "Reykjav\u00edk",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-122",
+      "expected_answer": "violin",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-123",
+      "expected_answer": "kitesurfing",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ku-124",
+      "expected_answer": "Montreal",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-125",
+      "expected_answer": "violin",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-126",
+      "expected_answer": "Montreal",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ms-127",
+      "expected_answer": "baking",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-128",
+      "expected_answer": "violin",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-129",
+      "expected_answer": "Tbilisi",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "sssu-130",
+      "expected_answer": "astronomy",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-131",
+      "expected_answer": "Tbilisi",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-132",
+      "expected_answer": "violin",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-133",
+      "expected_answer": "kitesurfing",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ku-134",
+      "expected_answer": "Reykjav\u00edk",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-135",
+      "expected_answer": "rock climbing",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-136",
+      "expected_answer": "Reykjav\u00edk",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ms-137",
+      "expected_answer": "kitesurfing",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "tr-138",
+      "expected_answer": "fencing",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ku-139",
+      "expected_answer": "Tbilisi",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-140",
+      "expected_answer": "chess",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-141",
+      "expected_answer": "Hanoi",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-142",
+      "expected_answer": "fencing",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-143",
+      "expected_answer": "kitesurfing",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-144",
+      "expected_answer": "Cape Town",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "sssu-145",
+      "expected_answer": "fencing",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "sssa-146",
+      "expected_answer": "Reykjav\u00edk",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-147",
+      "expected_answer": "chess",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-148",
+      "expected_answer": "baking",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-149",
+      "expected_answer": "Kyoto",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-150",
+      "expected_answer": "chess",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-151",
+      "expected_answer": "Montreal",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ms-152",
+      "expected_answer": "baking",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-153",
+      "expected_answer": "chess",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ku-154",
+      "expected_answer": "Montreal",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "sssu-155",
+      "expected_answer": "rock climbing",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-156",
+      "expected_answer": "Kyoto",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ms-157",
+      "expected_answer": "kitesurfing",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-158",
+      "expected_answer": "baking",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-159",
+      "expected_answer": "Helsinki",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-160",
+      "expected_answer": "rock climbing",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-161",
+      "expected_answer": "Montreal",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-162",
+      "expected_answer": "fencing",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-163",
+      "expected_answer": "pottery",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-164",
+      "expected_answer": "Cape Town",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "sssu-165",
+      "expected_answer": "rock climbing",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-166",
+      "expected_answer": "Reykjav\u00edk",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ms-167",
+      "expected_answer": "pottery",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "tr-168",
+      "expected_answer": "rock climbing",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ku-169",
+      "expected_answer": "Montreal",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-170",
+      "expected_answer": "chess",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-171",
+      "expected_answer": "Hanoi",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-172",
+      "expected_answer": "baking",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "tr-173",
+      "expected_answer": "rock climbing",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-174",
+      "expected_answer": "Lisbon",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "sssu-175",
+      "expected_answer": "chess",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-176",
+      "expected_answer": "Kyoto",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-177",
+      "expected_answer": "kitesurfing",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "tr-178",
+      "expected_answer": "violin",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-179",
+      "expected_answer": "Hanoi",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-180",
+      "expected_answer": "pottery",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-181",
+      "expected_answer": "Hanoi",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-182",
+      "expected_answer": "violin",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-183",
+      "expected_answer": "astronomy",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "ku-184",
+      "expected_answer": "Montreal",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-185",
+      "expected_answer": "violin",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-186",
+      "expected_answer": "Lisbon",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-187",
+      "expected_answer": "pottery",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "tr-188",
+      "expected_answer": "kitesurfing",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-189",
+      "expected_answer": "Lisbon",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "sssu-190",
+      "expected_answer": "astronomy",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": true,
+      "episode_id": "sssa-191",
+      "expected_answer": "Kyoto",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-192",
+      "expected_answer": "astronomy",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-193",
+      "expected_answer": "astronomy",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-194",
+      "expected_answer": "Helsinki",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssu-195",
+      "expected_answer": "astronomy",
+      "question_type": "single-session-user",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "sssa-196",
+      "expected_answer": "Lisbon",
+      "question_type": "single-session-assistant",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ms-197",
+      "expected_answer": "fencing",
+      "question_type": "multi-session",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "tr-198",
+      "expected_answer": "fencing",
+      "question_type": "temporal-reasoning",
+      "retrieved_top_k": 5
+    },
+    {
+      "correct": false,
+      "episode_id": "ku-199",
+      "expected_answer": "Hanoi",
+      "question_type": "knowledge-update",
+      "retrieved_top_k": 5
+    }
+  ],
+  "metadata": {
+    "ebrm_system_version": "0.14.0",
+    "embed_dim": 128,
+    "memory_config": {
+      "bits": 512,
+      "episodic_max_size": 512,
+      "in_dim": 128,
+      "semantic_max_size": 4096,
+      "working_max_size": 64
+    },
+    "memory_stats_after_run": {
+      "episodic": 0,
+      "semantic": 0,
+      "working": 64
+    },
+    "platform": "Linux-6.8.0-110-generic-x86_64-with-glibc2.35",
+    "python_version": "3.10.12",
+    "ran_at_utc": "2026-04-27T07:25:00.231438+00:00",
+    "source": "synthetic(seed=0,num=200)",
+    "top_k": 5
+  },
+  "per_type_counts": {
+    "knowledge-update": 40,
+    "multi-session": 40,
+    "single-session-assistant": 40,
+    "single-session-user": 40,
+    "temporal-reasoning": 40
+  },
+  "total": 200
+}
