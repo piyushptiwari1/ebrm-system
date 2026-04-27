@@ -4,6 +4,26 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.15.0] - 2026-04-27
+
+### Added
+
+- **MCTS-seeded refinement** (`RefinementConfig.use_mcts_seed: bool = False`):
+  When enabled and `ReasonerConfig.mcts` is configured, refinement rounds
+  beyond round 0 seed the Langevin sampler from the MCTS top-1 latent of
+  the accumulated trace pool — instead of re-encoding only the augmented
+  question. This focuses extra compute on the most promising region of
+  latent space identified so far.
+- New helper `HierarchicalLatentReasoner._mcts_top1_latent(traces)` returns
+  the MCTS top-ranked latent or `None` when MCTS is disabled.
+- `_reason_once` now accepts an optional `seed_latent` kwarg that overrides
+  the encoder when provided. Round 0 still always uses the encoder.
+
+### Notes
+
+- Default behaviour unchanged: `use_mcts_seed` defaults to `False`.
+- 294 tests pass, 95% coverage, ruff/mypy clean.
+
 ## [0.14.0] - 2026-04-27
 
 ### Added
