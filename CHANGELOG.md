@@ -3,7 +3,60 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.18.0] - 2026-04-27
 
+### Added — hybrid retrieval (Phase 2 of 90%+ plan)
+
+- **`benchmarks/retrieval/`** package — pluggable `Retriever` Protocol
+  with four production-grade implementations:
+  - `DenseRetriever` (cosine top-k over any `Embedder`)
+  - `BM25Retriever` (`rank-bm25`, lower-cased alphanumeric tokenizer,
+    per-episode index)
+  - `RRFRetriever` (parameter-free Reciprocal Rank Fusion, `k=60` per
+    Cormack et al. 2009 — the de-facto hybrid baseline)
+  - `CrossEncoderReranker` (default `BAAI/bge-reranker-v2-m3`, the
+    SOTA multilingual reranker on MTEB as of 2024-2025)
+- **`scripts/run_longmemeval_official.py`** — new CLI flags:
+  `--retriever {dense,bm25,hybrid}` (default: hybrid),
+  `--reranker {none,bge}` (default: none), `--rrf-k`,
+  `--per-retriever-k`, `--rerank-candidate-k`. Results JSON now records
+  retriever name and per-question retrieval scores for diagnostics.
+- **`pyproject.toml`** — `rank-bm25>=0.2.2` added to the `embedders` extra.
+- **`tests/test_benchmarks_v18.py`** — 16 new tests (DenseRetriever,
+  BM25Retriever, RRFRetriever, reranker with mocked sentence-transformers).
+
+### Measured — LongMemEval oracle (full 500-episode run, VM, T4)
+
+| Retriever                 | Overall | Δ vs v0.17 |
+| ------------------------- | ------- | ---------- |
+| **hybrid + bge-reranker** | **50.6 %** | **−0.2 pt** |
+
+Per-type breakdown (v0.18 → vs v0.17):
+
+| Type                       | v0.18  | v0.17  | Δ        |
+| -------------------------- | ------ | ------ | -------- |
+| single-session-assistant   | 92.9 % | 83.9 % | **+9.0** |
+| single-session-user        | 82.9 % | 85.7 % | −2.9     |
+| knowledge-update           | 70.5 % | 66.7 % | **+3.8** |
+| temporal-reasoning         | 33.1 % | 37.6 % | −4.5     |
+| multi-session              | 33.1 % | 33.1 % |  0.0     |
+| single-session-preference  |  0.0 % |  3.3 % | −3.3     |
+
+- Result file: `benchmarks/results/longmemeval-oracle-v0.18.0.json`.
+- Wall time ≈ 25 min (1487 s) on a single Tesla T4 with cached Azure
+  embeddings + judge results from the v0.17 run.
+- Net accuracy is **flat** versus pure-dense — the cross-encoder
+  reranker meaningfully helps assistant-info / knowledge questions but
+  costs us on temporal / preference / single-session-user, where dense
+  similarity already had the right turn at rank 1 and BM25/CE
+  re-ordering pushes a worse turn ahead. **No regression to user**:
+  hybrid+rerank still ties the v0.17 baseline within noise. v0.19
+  (LLM-based extraction + ebrm v2 reader) targets the failure modes
+  this run exposed: temporal-reasoning, multi-session, preference.
+
+### Notes
+
+- 338 tests pass, ruff/mypy clean, 95 % coverage.
 ## [0.17.0] - 2026-04-28
 
 ### Added — real semantics for LongMemEval (Phase 1 of 90%+ plan)
