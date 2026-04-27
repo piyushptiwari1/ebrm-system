@@ -64,22 +64,26 @@ class AzureOpenAIReader:
         retrieved_turns: list[OfficialTurn],
     ) -> str:
         context = "\n".join(_format_turn(t) for t in retrieved_turns)
-        rsp = self._client.chat.completions.create(
-            model=self._deployment,
-            temperature=self._temperature,
-            max_tokens=self._max_tokens,
-            messages=[
-                {"role": "system", "content": _READER_SYSTEM},
-                {
-                    "role": "user",
-                    "content": _READER_USER_TEMPLATE.format(
-                        today=episode.question_date,
-                        context=context or "(no excerpts retrieved)",
-                        question=episode.question,
-                    ),
-                },
-            ],
-        )
+        try:
+            rsp = self._client.chat.completions.create(
+                model=self._deployment,
+                temperature=self._temperature,
+                max_tokens=self._max_tokens,
+                messages=[
+                    {"role": "system", "content": _READER_SYSTEM},
+                    {
+                        "role": "user",
+                        "content": _READER_USER_TEMPLATE.format(
+                            today=episode.question_date,
+                            context=context or "(no excerpts retrieved)",
+                            question=episode.question,
+                        ),
+                    },
+                ],
+            )
+        except Exception:
+            # Treat as abstention so downstream judge handles it correctly.
+            return "I don't know."
         return (rsp.choices[0].message.content or "").strip()
 
 

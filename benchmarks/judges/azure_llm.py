@@ -136,23 +136,29 @@ class AzureOpenAIJudge:
         if cached is not None:
             return cached
 
-        rsp = self._client.chat.completions.create(
-            model=self._deployment,
-            temperature=0.0,
-            max_tokens=4,
-            messages=[
-                {"role": "system", "content": _JUDGE_SYSTEM},
-                {
-                    "role": "user",
-                    "content": _JUDGE_USER_TEMPLATE.format(
-                        qtype=question_type,
-                        question=question,
-                        gold=gold,
-                        pred=pred,
-                    ),
-                },
-            ],
-        )
+        try:
+            rsp = self._client.chat.completions.create(
+                model=self._deployment,
+                temperature=0.0,
+                max_tokens=4,
+                messages=[
+                    {"role": "system", "content": _JUDGE_SYSTEM},
+                    {
+                        "role": "user",
+                        "content": _JUDGE_USER_TEMPLATE.format(
+                            qtype=question_type,
+                            question=question,
+                            gold=gold,
+                            pred=pred,
+                        ),
+                    },
+                ],
+            )
+        except Exception as exc:
+            # Azure content filter, transient network errors, etc. Substring
+            # fallback so a single bad episode never aborts a 500-episode run.
+            correct = gold.strip().lower() in pred.strip().lower()
+            return JudgeVerdict(correct=correct, raw=f"fallback-substring:{type(exc).__name__}")
         raw = (rsp.choices[0].message.content or "").strip()
         verdict = JudgeVerdict(correct=raw.startswith("1"), raw=raw)
         self._cache_put(question_type, question, gold, pred, verdict)
