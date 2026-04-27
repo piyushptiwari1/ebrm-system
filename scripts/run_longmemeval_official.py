@@ -1,15 +1,17 @@
 """Production runner for the OFFICIAL LongMemEval dataset.
 
-Pipeline (v0.18, hybrid retrieval + optional cross-encoder reranker):
+Pipeline (v0.19, hybrid retrieval + optional LLM extraction + reranker):
 1. Load ``longmemeval_*.json`` via ``benchmarks.datasets.load_longmemeval_official``.
-2. Build the requested retriever:
+2. Optionally distill each session into atomic memories with
+   ``--extraction azure`` (Mem0-v3-style ADD-only, cached on disk).
+3. Build the requested retriever:
      - ``dense``  — pure dense top-k over the chosen embedder.
      - ``bm25``   — pure BM25 over a per-episode index.
      - ``hybrid`` — RRF fusion of dense + BM25 (default).
    Optionally wrap with ``--reranker bge`` to add a cross-encoder pass.
-3. Feed retrieved turns + question to ``AzureOpenAIReader``.
-4. Grade with ``AzureOpenAIJudge`` (abstention via deterministic detector).
-5. Write a stable JSON with full metadata to ``benchmarks/results/``.
+4. Feed retrieved turns + question to ``AzureOpenAIReader``.
+5. Grade with ``AzureOpenAIJudge`` (abstention via deterministic detector).
+6. Write a stable JSON with full metadata to ``benchmarks/results/``.
 
 Example:
     AZURE_OPENAI_API_KEY=... \\
@@ -40,9 +42,15 @@ from benchmarks.datasets import (  # noqa: E402
     load_longmemeval_official,
 )
 from benchmarks.embedders.hash import HashEmbedder  # noqa: E402
+from benchmarks.extraction import (  # noqa: E402
+    ExtractedMemory,
+    MemoryExtractor,
+    augment_episode_with_memories,
+)
 from benchmarks.retrieval import (  # noqa: E402
     BM25Retriever,
     DenseRetriever,
+    NeighborExpander,
     Retriever,
     RRFRetriever,
     ScoredTurn,
@@ -107,6 +115,16 @@ def _maybe_wrap_reranker(
         model = os.environ.get("EBRM_RERANKER_MODEL", "BAAI/bge-reranker-v2-m3")
         return CrossEncoderReranker(base, model_name=model, candidate_k=candidate_k)
     raise ValueError(f"unknown reranker {reranker_name!r}")
+
+
+def _build_extractor(name: str, *, cache_dir: Path) -> MemoryExtractor | None:
+    if name == "none":
+        return None
+    if name == "azure":
+        from benchmarks.extraction import AzureLLMExtractor
+
+        return AzureLLMExtractor(cache_dir=cache_dir / "extract")
+    raise ValueError(f"unknown extractor {name!r}")
 
 
 def _aggregate_summary(per_q: list[dict], episodes: list[OfficialEpisode]) -> dict:
@@ -183,6 +201,24 @@ def main() -> int:
         help="Cap number of episodes (smoke testing). Default = all.",
     )
     p.add_argument(
+        "--neighbor-window",
+        type=int,
+        default=0,
+        help=(
+            "After retrieval, also include +/-N same-session neighbors of "
+            "each hit (cheap recall boost; default: 0 = off)."
+        ),
+    )
+    p.add_argument(
+        "--extraction",
+        choices=["none", "azure"],
+        default="none",
+        help=(
+            "Distill sessions into atomic memories before retrieval. "
+            "`azure` uses gpt-4o-mini (cached on disk). Default: none."
+        ),
+    )
+    p.add_argument(
         "--reader",
         choices=["azure", "none"],
         default="azure",
@@ -234,6 +270,12 @@ def main() -> int:
         reranker_name=args.reranker,
         candidate_k=args.rerank_candidate_k,
     )
+    if args.neighbor_window > 0:
+        retriever = NeighborExpander(retriever, window=args.neighbor_window)
+        print(f"[neighbors] window={args.neighbor_window}", flush=True)
+    extractor = _build_extractor(args.extraction, cache_dir=cache_dir)
+    if extractor is not None:
+        print(f"[extractor] {extractor.name} (additive corpus)", flush=True)
 
     reader = None
     if args.reader == "azure":
@@ -249,8 +291,15 @@ def main() -> int:
 
     per_q: list[dict] = []
     t0 = time.time()
+    extracted_counts: list[int] = []
     for i, ep in enumerate(episodes):
-        retrieved_scored: list[ScoredTurn] = retriever.retrieve(ep, top_k=args.top_k)
+        retrieval_episode = ep
+        if extractor is not None:
+            memories: list[ExtractedMemory] = extractor.extract(ep)
+            extracted_counts.append(len(memories))
+            if memories:
+                retrieval_episode = augment_episode_with_memories(ep, memories)
+        retrieved_scored: list[ScoredTurn] = retriever.retrieve(retrieval_episode, top_k=args.top_k)
         retrieved = [st.turn for st in retrieved_scored]
         if reader is not None:
             pred = reader.read(ep, retrieved)
@@ -322,6 +371,15 @@ def main() -> int:
             "per_retriever_k": args.per_retriever_k,
             "rerank_candidate_k": args.rerank_candidate_k,
             "max_episodes": args.max_episodes,
+            "extraction": args.extraction,
+            "extractor": getattr(extractor, "name", args.extraction),
+            "extraction_mode": "additive" if args.extraction != "none" else "off",
+            "neighbor_window": args.neighbor_window,
+            "avg_memories_per_episode": (
+                round(sum(extracted_counts) / len(extracted_counts), 2)
+                if extracted_counts
+                else None
+            ),
             "elapsed_seconds": round(elapsed_total, 2),
             "ran_at_utc": datetime.now(timezone.utc).isoformat(),
         },

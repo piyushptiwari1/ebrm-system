@@ -138,5 +138,6 @@ Future releases will publish:
   training loop with a published checkpoint.
 
 Each future release will follow the same protocol: real artifacts, real
-metadata, no placeholders. See the [CHANGELOG](../CHANGELOG.md) for the
-authoritative version history.
+metadata, no placeholders. See the
+[CHANGELOG](https://github.com/piyushptiwari1/ebrm-system/blob/main/CHANGELOG.md)
+for the authoritative version history.

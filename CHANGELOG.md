@@ -3,6 +3,57 @@
 All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.19.0] - 2026-04-27
+
+### Added — LLM memory extraction (Phase 3 of 90%+ plan)
+
+- **`benchmarks/extraction/`** package — pluggable `MemoryExtractor`
+  Protocol with an `AzureLLMExtractor` (Mem0-v3-style ADD-only). Each
+  session is distilled into a list of atomic, self-contained
+  `ExtractedMemory` items via a single LLM call (gpt-4o-mini), cached
+  on disk by `sha256(deployment + session_payload)` so a 500-episode
+  run only pays the extraction cost once.
+- **`memories_to_episode()`** — wraps extracted memories as a synthetic
+  `OfficialEpisode` so every existing retriever (dense, BM25, RRF,
+  reranker) and the reader continue to work unchanged.
+- **`scripts/run_longmemeval_official.py`** — new `--extraction
+  {none,azure}` flag (default: none). Result JSON now records the
+  extractor name and average memories-per-episode.
+- **`tests/test_benchmarks_v19.py`** — 8 new tests covering the
+  `MemoryExtractor` protocol, episode wrapping, and the Azure extractor
+  with mocked OpenAI client (caching, JSON parsing, malformed payloads,
+  per-session grouping, empty episodes).
+
+### Notes
+
+- 353 tests pass, ruff/mypy clean, 95 % coverage.
+
+### Measured — LongMemEval oracle (full 500-episode run, VM, T4)
+
+| Retriever (extraction + neighbors)    | Overall | Δ vs v0.18 |
+| ------------------------------------- | ------- | ---------- |
+| **hybrid + bge + extract + nbr=1**    | **53.8 %** | **+3.2 pt** |
+
+Per-type breakdown (v0.19 → vs v0.18):
+
+| Type                       | v0.19  | v0.18  | Δ        |
+| -------------------------- | ------ | ------ | -------- |
+| single-session-assistant   | 96.4 % | 92.9 % | +3.5     |
+| single-session-user        | 87.1 % | 82.9 % | +4.2     |
+| temporal-reasoning         | 38.4 % | 33.1 % | **+5.3** |
+| multi-session              | 36.8 % | 33.1 % | **+3.7** |
+| knowledge-update           | 67.9 % | 70.5 % | −2.5     |
+| single-session-preference  |  3.3 % |  0.0 % | +3.3     |
+
+- Result file: `benchmarks/results/longmemeval-oracle-v0.19.0.json`.
+- Wall time ≈ 82 min (4912 s) on a single Tesla T4.
+- Lift comes from the failure modes v0.18 mapped: temporal/multi-session
+  benefit most from neighbor expansion (multi-turn answers); the user-
+  facing single-session types benefit from distilled memories
+  surfacing alongside raw turns. Knowledge-update slipped 2.5 pt — a
+  consequence of the additive corpus occasionally surfacing a stale
+  memory; v0.20 (UPDATE/DELETE consolidation) will address this.
+
 ## [0.18.0] - 2026-04-27
 
 ### Added — hybrid retrieval (Phase 2 of 90%+ plan)
