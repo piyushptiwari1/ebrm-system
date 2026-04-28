@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ebrm-system"
-version = "0.28.0"
+version = "0.29.0"
 description = "EBRM System — a full reasoning pipeline with hierarchical latents, adaptive test-time compute, symbolic verification, and self-consistency voting."
 readme = "README.md"
 license = { text = "Apache-2.0" }
@@ -74,10 +74,20 @@ Issues = "https://github.com/piyushptiwari1/ebrm-system/issues"
 ebrm-system = "ebrm_system.cli:app"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/ebrm_system"]
+packages = ["src/ebrm_system", "benchmarks"]
+exclude = [
+    "benchmarks/results/**",
+    "benchmarks/__pycache__/**",
+    "benchmarks/**/__pycache__/**",
+]
 
 [tool.hatch.build.targets.sdist]
-include = ["src", "tests", "README.md", "LICENSE", "pyproject.toml"]
+include = ["src", "benchmarks", "tests", "README.md", "LICENSE", "pyproject.toml"]
+exclude = [
+    "benchmarks/results/**",
+    "benchmarks/__pycache__/**",
+    "benchmarks/**/__pycache__/**",
+]
 
 # ---------- Ruff ----------
 [tool.ruff]
@@ -100,6 +110,13 @@ warn_unreachable = true
 disallow_untyped_defs = true
 ignore_missing_imports = true
 files = ["src/ebrm_system"]
+
+# benchmarks/ is shipped in the wheel as the LongMemEval reference impl
+# but is intentionally not strictly typed. The longmem facade lazy-imports
+# from benchmarks.* — silence transitive errors here.
+[[tool.mypy.overrides]]
+module = "benchmarks.*"
+ignore_errors = true
 
 # ---------- Pytest ----------
 [tool.pytest.ini_options]

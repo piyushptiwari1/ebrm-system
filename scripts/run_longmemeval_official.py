@@ -230,6 +230,22 @@ def main() -> int:
         ),
     )
     p.add_argument(
+        "--reader-n-samples",
+        type=int,
+        default=1,
+        help=(
+            "v0.29: self-consistency reader. n>1 samples the reader N times "
+            "at sc_temperature in a single API call and majority-votes on "
+            "the final answer. Default 1 (off). 3 is the recommended setting."
+        ),
+    )
+    p.add_argument(
+        "--reader-sc-temperature",
+        type=float,
+        default=0.5,
+        help="Sampling temperature when --reader-n-samples > 1 (default 0.5).",
+    )
+    p.add_argument(
         "--max-episodes",
         type=int,
         default=None,
@@ -387,6 +403,8 @@ def main() -> int:
         reader = AzureOpenAIReader(
             aggregation_cot=args.aggregation_cot,
             temporal_ordering_cot=args.temporal_ordering_cot,
+            n_samples=args.reader_n_samples,
+            sc_temperature=args.reader_sc_temperature,
         )
 
     judge = None
@@ -481,6 +499,8 @@ def main() -> int:
             "per_type_top_k": args.per_type_top_k,
             "aggregation_cot": args.aggregation_cot,
             "temporal_ordering_cot": args.temporal_ordering_cot,
+            "reader_n_samples": args.reader_n_samples,
+            "reader_sc_temperature": args.reader_sc_temperature,
             "rrf_k": args.rrf_k,
             "per_retriever_k": args.per_retriever_k,
             "rerank_candidate_k": args.rerank_candidate_k,

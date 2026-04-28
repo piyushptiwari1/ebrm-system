@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import os
+import re
+from collections import Counter
 
 from benchmarks.datasets.longmemeval_official import OfficialEpisode, OfficialTurn
 from benchmarks.router import (
@@ -97,6 +99,43 @@ def _final_answer(raw: str) -> str:
     return raw.strip()
 
 
+_PUNCT_RE = re.compile(r"[^\w\s]")
+
+
+def _normalize_answer(ans: str) -> str:
+    """Lower + strip punctuation + collapse whitespace for vote-keying.
+
+    A leading ``i don't know`` (any case / punctuation) collapses to a
+    single bucket so abstentions don't fragment the vote.
+    """
+    s = _PUNCT_RE.sub(" ", ans.lower())
+    s = " ".join(s.split())
+    if s.startswith("i don t know") or s.startswith("i dont know"):
+        return "i don't know"
+    return s
+
+
+def _majority_vote(answers: list[str]) -> str:
+    """Majority vote on normalized form; return original spelling of winner."""
+    if not answers:
+        return ""
+    if len(answers) == 1:
+        return answers[0]
+    keys = [_normalize_answer(a) for a in answers]
+    counts = Counter(keys)
+    # Bias: never pick "i don't know" if any non-IDK answer has equal votes.
+    top_key, top_count = counts.most_common(1)[0]
+    if top_key == "i don't know":
+        for k, c in counts.most_common():
+            if k != "i don't know" and c == top_count:
+                top_key = k
+                break
+    for ans, key in zip(answers, keys, strict=True):
+        if key == top_key:
+            return ans
+    return answers[0]
+
+
 def _format_turn(turn: OfficialTurn) -> str:
     return f"[{turn.session_date}] [{turn.role}] {turn.content.strip()}"
 
@@ -127,6 +166,8 @@ class AzureOpenAIReader:
         temperature: float = 0.0,
         aggregation_cot: bool = False,
         temporal_ordering_cot: bool = False,
+        n_samples: int = 1,
+        sc_temperature: float = 0.5,
     ) -> None:
         try:
             from openai import AzureOpenAI
@@ -142,11 +183,39 @@ class AzureOpenAIReader:
             api_key=api_key or os.environ["AZURE_OPENAI_API_KEY"],
             api_version=api_version or os.environ["AZURE_API_VERSION"],
         )
+        if n_samples < 1:
+            raise ValueError(f"n_samples must be ≥ 1, got {n_samples}")
         self.name = f"azure-reader-{self._deployment}"
+        if n_samples > 1:
+            self.name += f"-sc{n_samples}"
         self._max_tokens = max_tokens
         self._temperature = temperature
         self._aggregation_cot = aggregation_cot
         self._temporal_ordering_cot = temporal_ordering_cot
+        self._n_samples = n_samples
+        self._sc_temperature = sc_temperature
+
+    def _chat_complete(
+        self,
+        messages: list[dict],
+        *,
+        temperature: float,
+        max_tokens: int,
+        n: int,
+    ) -> list[str]:
+        """Call the LLM and return N raw completion strings.
+
+        Subclasses (e.g. :class:`OpenAICompatibleReader`) override this to
+        swap the client without re-implementing prompt logic.
+        """
+        rsp = self._client.chat.completions.create(
+            model=self._deployment,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            n=n,
+            messages=messages,
+        )
+        return [(c.message.content or "").strip() for c in rsp.choices]
 
     def read(
         self,
@@ -174,28 +243,32 @@ class AzureOpenAIReader:
         else:
             template = _READER_USER_TEMPLATE
             max_tokens = self._max_tokens
+        # Self-consistency: n>1 → sample at sc_temperature, vote on ANSWER.
+        use_sc = self._n_samples > 1
+        temperature = self._sc_temperature if use_sc else self._temperature
+        messages = [
+            {"role": "system", "content": _READER_SYSTEM},
+            {
+                "role": "user",
+                "content": template.format(
+                    today=episode.question_date,
+                    context=context or "(no excerpts retrieved)",
+                    question=episode.question,
+                ),
+            },
+        ]
         try:
-            rsp = self._client.chat.completions.create(
-                model=self._deployment,
-                temperature=self._temperature,
+            raws = self._chat_complete(
+                messages,
+                temperature=temperature,
                 max_tokens=max_tokens,
-                messages=[
-                    {"role": "system", "content": _READER_SYSTEM},
-                    {
-                        "role": "user",
-                        "content": template.format(
-                            today=episode.question_date,
-                            context=context or "(no excerpts retrieved)",
-                            question=episode.question,
-                        ),
-                    },
-                ],
+                n=self._n_samples,
             )
         except Exception:
             # Treat as abstention so downstream judge handles it correctly.
             return "I don't know."
-        raw = (rsp.choices[0].message.content or "").strip()
-        return _final_answer(raw) if (is_agg or is_ord) else raw
+        answers = [_final_answer(r) for r in raws] if (is_agg or is_ord) else raws
+        return _majority_vote(answers)
 
 
 __all__ = ["AzureOpenAIReader"]

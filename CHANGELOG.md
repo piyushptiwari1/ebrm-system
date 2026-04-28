@@ -4,6 +4,154 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.0] - 2026-04-28
+
+### Added — public ``ebrm_system.longmem`` API + multi-provider support; self-consistency landed but documented as negative
+
+Three changes targeted at user adoption: ship the LongMemEval pipeline
+in the wheel, attack the reader-bound failure budget identified in
+v0.28, and make the pipeline work with any inference provider.
+
+**Default behaviour is identical to v0.28 (77.2 % oracle).** The
+self-consistency lever is opt-in and, at the values we tested, regresses
+across every question type — see "Negative result" below.
+
+#### 1. Public LongMem API
+
+`pip install ebrm-system` now ships the full v0.28 LongMemEval pipeline.
+Through v0.28 the retrieval / reranker / fusion / reader stack lived
+under the top-level `benchmarks/` directory and was excluded from the
+wheel — users who wanted the SOTA pipeline had to clone the repo. v0.29
+ships `benchmarks/` in the wheel (excluding `benchmarks/results/**`)
+and exposes a clean facade:
+
+```python
+from ebrm_system.longmem import LongMemPipeline
+
+pipe = LongMemPipeline.from_default()  # Azure stack, n_samples=1
+pipe.add_session(
+    session_id="s1",
+    date="2024-03-12 09:30",
+    turns=[
+        {"role": "user", "content": "I bought a Trek bike yesterday"},
+        {"role": "assistant", "content": "Nice — happy riding!"},
+    ],
+)
+pipe.add_session("s2", "2024-03-20", [{"role": "user", "content": "I rode it to work"}])
+result = pipe.ask("What bike did I buy?", today="2024-04-01")
+print(result.answer, result.retrieved_session_ids)
+```
+
+`LongMemPipeline` is a thin orchestration layer — persistence and
+session lifecycle remain the caller's responsibility. The retriever and
+reader can be swapped via the constructor; `from_default(...)` wires the
+v0.28 default stack (BM25 + dense Azure + RRF + BGE cross-encoder + LLM
+fusion + neighbor expansion + Azure reader with aggregation-CoT).
+
+#### 2. Multi-provider support — works with any OpenAI-compatible endpoint
+
+The pipeline now works against **OpenAI, Ollama, vLLM, llama.cpp server,
+OpenRouter, Together, Groq, Anyscale, LM Studio, Mistral, DeepInfra**,
+and any other server speaking the OpenAI HTTP API. Four convenience
+classmethods cover the common cases:
+
+```python
+LongMemPipeline.from_openai(api_key="sk-...")              # OpenAI proper
+LongMemPipeline.from_ollama()                              # local, no key
+LongMemPipeline.from_openrouter(chat_model="anthropic/claude-3.5-sonnet")
+LongMemPipeline.from_provider(                             # fully custom
+    chat_model="...", embed_model="...",
+    base_url="http://my-vllm:8000/v1", api_key="...",
+)
+```
+
+Two new building blocks back this:
+
+- `benchmarks.embedders.openai_compatible.OpenAICompatibleEmbedder` —
+  takes `model`, `base_url`, `api_key`. Same disk caching + retry as
+  the Azure embedder; cache namespaced by `(model, base_url)` to avoid
+  collisions across providers.
+- `benchmarks.reader.openai_compatible.OpenAICompatibleReader` —
+  subclasses `AzureOpenAIReader` to reuse 100 % of the prompt logic,
+  gating, and self-consistency voting. Only the chat client differs.
+
+**Important caveat**: only `from_default` (Azure) is benchmark-validated
+at 77.2 %. Other providers will score differently depending on the
+chat / embedding model you choose. The non-Azure constructors default
+to `fusion_rerank=False` and `reranker="none"` to keep latency / cost
+sane on local backends.
+
+#### 3. Self-consistency reader
+
+`AzureOpenAIReader` and `OpenAICompatibleReader` now accept
+`n_samples: int = 1` and `sc_temperature: float = 0.5`. When
+`n_samples > 1` the reader performs a single API call with `n=N`,
+samples N completions at `sc_temperature`, and majority-votes on the
+final answer (post-CoT extraction when aggregation- or temporal-
+ordering-CoT is active). Tie-breaking biases against `"I don't know"`
+so abstentions never beat a substantive answer with equal vote count.
+
+Exposed via the benchmark runner as `--reader-n-samples N
+--reader-sc-temperature 0.5` and via the facade as
+`LongMemPipeline.from_*(n_samples=3)`.
+
+This is **opt-in, default OFF**: the v0.29 default behaviour is
+identical to v0.28 (77.2 % oracle).
+
+#### Negative result — self-consistency at sc_temperature=0.5 regressed across all six question types
+
+Measured 500-Q oracle run with `--reader-n-samples 3
+--reader-sc-temperature 0.5` (all v0.28 features otherwise unchanged):
+
+| question type             | v0.28 | v0.29 sc=3 | delta   |
+|---------------------------|-------|------------|---------|
+| temporal-reasoning        | 0.729 | 0.541      | **-0.188** |
+| multi-session             | 0.647 | 0.609      | -0.038  |
+| knowledge-update          | 0.846 | 0.833      | -0.013  |
+| single-session-preference | 0.533 | 0.267      | **-0.267** |
+| single-session-assistant  | 0.964 | 0.946      | -0.018  |
+| single-session-user       | 0.957 | 0.929      | -0.028  |
+| **overall**               | **0.772** | **0.688** | **-0.084** |
+
+Diagnosis: self-consistency reduces variance only when the output has a
+**discrete answer to vote on** (CoT with explicit `ANSWER:` lines,
+math, classification). The default LongMemEval reader produces
+free-form prose; surface variations ("May 12" / "12 May" / "on May 12,
+2024") split into 1/1/1 ties, the tie-breaker picks the first sample,
+and effective behaviour collapses to "draw one sample at temp=0.5"
+— strictly worse than the temp=0 v0.28 default. Every question type
+regressed, confirming this is a global property of free-form prose
+sampling, not a slice-specific issue.
+
+The code ships in v0.29 because (a) `n_samples=1` default is
+behaviour-preserving, (b) future CoT-only paths (e.g. an aggregation-CoT
++ SC combination) may yet benefit, and (c) honest negative documentation
+is more useful than a quiet revert. **Recommendation: do not pass
+`n_samples > 1` in production until a CoT-gated SC variant is shipped.**
+
+#### Why these three
+
+v0.28's diagnostic showed retrieval recall on failures = 100 % — the
+entire ~22-point error budget is reader+judge. Self-consistency is the
+cheapest, most-cited OSS lever for reader-bound failures (Wang et al.
+2023; consistently +2-5 pt on math/QA benchmarks at n=3). The public
+API + multi-provider changes have zero accuracy impact but fix the
+biggest UX gaps: through v0.28 the LongMemEval pipeline was unreachable
+from `pip install ebrm-system`, and the only supported provider was
+Azure OpenAI — which excluded everyone without an Azure subscription.
+
+### Tests
+
+- 21 tests in `tests/test_benchmarks_v29.py` covering
+  `_normalize_answer`, `_majority_vote`, `n_samples` end-to-end with
+  stubbed Azure client, public facade imports, dataclass shapes, and
+  pipeline happy path.
+- 14 tests in `tests/test_benchmarks_v29_providers.py` covering
+  OpenAI-compatible reader/embedder construction, env-var fallbacks,
+  cache namespacing, and the four provider classmethods
+  (`from_openai`, `from_ollama`, `from_openrouter`, `from_provider`).
+- Total: **452 tests passing** (was 417 in v0.28).
+
 ## [0.28.0] - 2026-04-28
 
 ### Fixed — aggregation-CoT temporal leak (v0.25 bug); added temporal-ordering CoT (opt-in, default OFF)
