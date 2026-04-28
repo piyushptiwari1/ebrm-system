@@ -4,6 +4,41 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.24.0] - 2026-04-28
+
+### Added — per-type top_k routing for aggregation vs chronology
+
+**Measured: 77.4 % on LongMemEval oracle (n=500) — NEW SOTA, +0.8pt over v0.23.**
+
+Per-type (vs v0.23 baseline):
+- temporal-reasoning:        72.9 % (+3.0pt — was 69.9, recovered v0.22 regression)
+- single-session-user:       94.3 % (+1.4pt — was 92.9)
+- multi-session:             65.4 % (-0.8pt — was 66.2; reader still miscounts even with 20 candidates)
+- knowledge-update:          83.3 % (flat)
+- single-session-preference: 56.7 % (flat)
+- single-session-assistant:  98.2 % (flat)
+
+Wall: ~30 min on T4. Chronology recovered cleanly via temporal=`min(default,5)`.
+
+### Added — per-type top_k routing for aggregation vs chronology
+
+Diagnosed v0.23 leftover: 32/36 multi-session reader-wrong failures were
+aggregation undercounts ("how many" / "how much total"), and temporal
+regressed -2.3pt at top_k=10 because more excerpts confused chronology.
+Different question types want different retrieval depths.
+
+- **`benchmarks/router/`** — `classify_question()` returns one of
+  `"aggregation"`, `"temporal"`, `"recommendation"`, `"general"` from
+  surface keyword cues + the official ``question_type`` tag.
+  `top_k_for()` maps the tag to a top_k: aggregation=`max(default, 20)`,
+  temporal=`min(default, 5)`, others=default. Aggregation cues take
+  precedence over temporal type so date-arithmetic counting questions
+  also get more candidates.
+- **`scripts/run_longmemeval_official.py`** — new opt-in flag
+  `--per-type-top-k`. Default OFF (backwards compatible with v0.23).
+- **`tests/test_benchmarks_v24.py`** — 8 new tests for the classifier
+  cues, type-tag fallback, and top_k mapping.
+
 ## [0.23.0] - 2026-04-28
 
 ### Fixed — preference & aggregation reader prompts
