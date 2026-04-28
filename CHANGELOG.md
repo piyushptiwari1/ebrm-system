@@ -4,6 +4,83 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.29.0] - unreleased
+
+### Added — public ``ebrm_system.longmem`` API + self-consistency reader
+
+Two changes targeted at the user experience of the LongMemEval-tuned
+stack and at the reader-bound failure budget identified in v0.28's
+diagnostic.
+
+#### 1. Public LongMem API
+
+`pip install ebrm-system` now ships the full v0.28 LongMemEval pipeline.
+Through v0.28 the retrieval / reranker / fusion / reader stack lived
+under the top-level `benchmarks/` directory and was excluded from the
+wheel — users who wanted the SOTA pipeline had to clone the repo. v0.29
+ships `benchmarks/` in the wheel (excluding `benchmarks/results/**`)
+and exposes a clean facade:
+
+```python
+from ebrm_system.longmem import LongMemPipeline
+
+pipe = LongMemPipeline.from_default()  # Azure stack, n_samples=1
+pipe.add_session(
+    session_id="s1",
+    date="2024-03-12 09:30",
+    turns=[
+        {"role": "user", "content": "I bought a Trek bike yesterday"},
+        {"role": "assistant", "content": "Nice — happy riding!"},
+    ],
+)
+pipe.add_session("s2", "2024-03-20", [{"role": "user", "content": "I rode it to work"}])
+result = pipe.ask("What bike did I buy?", today="2024-04-01")
+print(result.answer, result.retrieved_session_ids)
+```
+
+`LongMemPipeline` is a thin orchestration layer — persistence and
+session lifecycle remain the caller's responsibility. The retriever and
+reader can be swapped via the constructor; `from_default(...)` wires the
+v0.28 default stack (BM25 + dense Azure + RRF + BGE cross-encoder + LLM
+fusion + neighbor expansion + Azure reader with aggregation-CoT).
+
+#### 2. Self-consistency reader
+
+`AzureOpenAIReader` now accepts `n_samples: int = 1` and
+`sc_temperature: float = 0.5`. When `n_samples > 1` the reader performs
+a single API call with `n=N`, samples N completions at
+`sc_temperature`, and majority-votes on the final answer (post-CoT
+extraction when aggregation- or temporal-ordering-CoT is active). Tie-
+breaking biases against `"I don't know"` so abstentions never beat a
+substantive answer with equal vote count.
+
+Exposed via the benchmark runner as `--reader-n-samples N
+--reader-sc-temperature 0.5` and via the facade as
+`LongMemPipeline.from_default(n_samples=3)`.
+
+This is **opt-in, default OFF**: the v0.29 default behaviour is
+identical to v0.28 (77.2 % oracle). The setting `n_samples=3` triples
+reader output cost; ship-or-park decision happens after the v0.29 VM
+benchmark.
+
+#### Why these two
+
+v0.28's diagnostic showed retrieval recall on failures = 100 % — the
+entire ~22-point error budget is reader+judge. Self-consistency is the
+cheapest, most-cited OSS lever for reader-bound failures (Wang et al.
+2023; consistently +2-5 pt on math/QA benchmarks at n=3). The public
+API change has zero accuracy impact but fixes the largest UX gap:
+through v0.28 the LongMemEval pipeline was unreachable from
+`pip install ebrm-system`.
+
+### Tests
+
+- 21 new tests in `tests/test_benchmarks_v29.py` covering
+  `_normalize_answer`, `_majority_vote`, `n_samples` end-to-end with
+  stubbed Azure client, public facade imports / dataclass shape /
+  pipeline happy path.
+- Total: 438 tests passing (was 417 in v0.28 + 21 v0.29 - 0 stale).
+
 ## [0.28.0] - 2026-04-28
 
 ### Fixed — aggregation-CoT temporal leak (v0.25 bug); added temporal-ordering CoT (opt-in, default OFF)
