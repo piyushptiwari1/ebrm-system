@@ -4,6 +4,65 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [unreleased] - v0.26 experiment — NEGATIVE RESULT, not published
+
+**Measured: 74.2 % on LongMemEval oracle (n=500) — −3.2 pt vs v0.24/v0.25 default (77.4 %).**
+
+Three orthogonal levers tried on branch `feature/v0.26-anti-hallucination`
+(commit c5e1324):
+
+1. **Latest-wins KU rule** — added explicit instruction in the reader
+   system prompt: when the same fact appears with different values across
+   excerpts, the most recent excerpt wins (e.g. bike count, 5K PR).
+2. **Entity-grounded abstention safety** — instruction telling the reader
+   to reply "I don't know" if the question's named entity is not in the
+   excerpts, and to refuse substituting a related-but-different entity.
+3. **Broader recommendation cues** — extended `_RECOMMEND_CUES` in
+   `benchmarks/router/__init__.py` from 7 → 16 phrases (added "any tips",
+   "what do you think", "could there be a reason", "I'm trying to decide",
+   etc.).
+
+Per-type deltas vs v0.24:
+
+| type                       | v0.24    | v0.26    | Δ        |
+|----------------------------|----------|----------|----------|
+| temporal-reasoning         | 72.93 %  | 69.92 %  | −3.0     |
+| multi-session              | 65.41 %  | 57.14 %  | **−8.3** |
+| knowledge-update           | 83.33 %  | 82.05 %  | −1.3     |
+| single-session-preference  | 56.67 %  | 46.67 %  | **−10.0**|
+| single-session-assistant   | 98.21 %  | 100.00 % | +1.8     |
+| single-session-user        | 94.29 %  | 97.14 %  | +2.9     |
+| **overall**                | **77.40 %** | **74.20 %** | **−3.2** |
+
+Diagnosis:
+
+- The "latest-wins" wording made the reader discount earlier excerpts even
+  when the question explicitly asked about the past (knowledge-update did
+  NOT improve and multi-session lost 8 pt).
+- The abstention safety wording over-fired on multi-session aggregation
+  questions where the entity was paraphrased rather than literal, causing
+  spurious "I don't know".
+- The broader recommendation cues misclassified non-advice preference
+  questions ("I'm trying to decide between X and Y") into the
+  recommendation path, which uses a different prompt branch and lost
+  10 pt on single-session-preference.
+
+The changes live globally on the reader system prompt and the router
+classifier — no clean opt-in flag boundary without a refactor. Branch
+preserved as a record; not merged, not published. Main stays at v0.25.0
+behaviour (= v0.24 default = 77.4 %). Result JSON archived at
+`benchmarks/results/longmemeval-oracle-v0.26.0.json`.
+
+Lessons for future attempts:
+
+- Reader-prompt experiments must measure per-type to catch knock-on
+  damage; an instruction that helps one slice can hurt three others.
+- Prompt-level "always do X" rules are brittle; prefer narrow,
+  question-type-conditional instructions injected only when the router
+  detects the matching type.
+- Abstention rules need a calibrated entity-overlap threshold, not a
+  binary instruction.
+
 ## [0.25.0] - 2026-04-28
 
 ### Added — aggregation CoT reader (list-then-count) — opt-in, default OFF
