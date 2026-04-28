@@ -4,13 +4,17 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [0.29.0] - unreleased
+## [0.29.0] - 2026-04-28
 
-### Added — public ``ebrm_system.longmem`` API + self-consistency reader + multi-provider support
+### Added — public ``ebrm_system.longmem`` API + multi-provider support; self-consistency landed but documented as negative
 
 Three changes targeted at user adoption: ship the LongMemEval pipeline
 in the wheel, attack the reader-bound failure budget identified in
 v0.28, and make the pipeline work with any inference provider.
+
+**Default behaviour is identical to v0.28 (77.2 % oracle).** The
+self-consistency lever is opt-in and, at the values we tested, regresses
+across every question type — see "Negative result" below.
 
 #### 1. Public LongMem API
 
@@ -92,9 +96,38 @@ Exposed via the benchmark runner as `--reader-n-samples N
 `LongMemPipeline.from_*(n_samples=3)`.
 
 This is **opt-in, default OFF**: the v0.29 default behaviour is
-identical to v0.28 (77.2 % oracle). The setting `n_samples=3` triples
-reader output cost; ship-or-park decision happens after the v0.29 VM
-benchmark.
+identical to v0.28 (77.2 % oracle).
+
+#### Negative result — self-consistency at sc_temperature=0.5 regressed across all six question types
+
+Measured 500-Q oracle run with `--reader-n-samples 3
+--reader-sc-temperature 0.5` (all v0.28 features otherwise unchanged):
+
+| question type             | v0.28 | v0.29 sc=3 | delta   |
+|---------------------------|-------|------------|---------|
+| temporal-reasoning        | 0.729 | 0.541      | **-0.188** |
+| multi-session             | 0.647 | 0.609      | -0.038  |
+| knowledge-update          | 0.846 | 0.833      | -0.013  |
+| single-session-preference | 0.533 | 0.267      | **-0.267** |
+| single-session-assistant  | 0.964 | 0.946      | -0.018  |
+| single-session-user       | 0.957 | 0.929      | -0.028  |
+| **overall**               | **0.772** | **0.688** | **-0.084** |
+
+Diagnosis: self-consistency reduces variance only when the output has a
+**discrete answer to vote on** (CoT with explicit `ANSWER:` lines,
+math, classification). The default LongMemEval reader produces
+free-form prose; surface variations ("May 12" / "12 May" / "on May 12,
+2024") split into 1/1/1 ties, the tie-breaker picks the first sample,
+and effective behaviour collapses to "draw one sample at temp=0.5"
+— strictly worse than the temp=0 v0.28 default. Every question type
+regressed, confirming this is a global property of free-form prose
+sampling, not a slice-specific issue.
+
+The code ships in v0.29 because (a) `n_samples=1` default is
+behaviour-preserving, (b) future CoT-only paths (e.g. an aggregation-CoT
++ SC combination) may yet benefit, and (c) honest negative documentation
+is more useful than a quiet revert. **Recommendation: do not pass
+`n_samples > 1` in production until a CoT-gated SC variant is shipped.**
 
 #### Why these three
 
