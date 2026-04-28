@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 
 from benchmarks.datasets.longmemeval_official import OfficialEpisode, OfficialTurn
+from benchmarks.router import classify_question
 from benchmarks.temporal.dates import parse_lme_date
 
 _READER_SYSTEM = (
@@ -40,6 +41,34 @@ _READER_USER_TEMPLATE = (
     "Answer:"
 )
 
+_AGGREGATION_USER_TEMPLATE = (
+    "Today's date is {today}.\n\n"
+    "Relevant chat history excerpts (sorted oldest \u2192 newest):\n"
+    "{context}\n\n"
+    "Question: {question}\n\n"
+    "This is a counting / total / aggregation question. Follow this "
+    "procedure exactly:\n"
+    "1. On a line starting with `ITEMS:`, list every distinct relevant item "
+    "from the excerpts as a numbered list (1., 2., 3., ...). Include items "
+    "that match any phrasing of the question's criterion (e.g. "
+    "'bought OR worked on', 'pick up OR return'). Do not deduplicate items "
+    "that are clearly distinct.\n"
+    "2. On a line starting with `TOTAL:`, state the count or sum of the "
+    "items listed above.\n"
+    "3. On a line starting with `ANSWER:`, give the final concise answer "
+    "(usually just the number or amount).\n"
+    "Do not say 'I don't know' if any relevant items appear in the excerpts."
+)
+
+
+def _final_answer(raw: str) -> str:
+    """Extract the ``ANSWER:`` line from a CoT response, falling back to raw."""
+    for line in reversed(raw.splitlines()):
+        s = line.strip()
+        if s.upper().startswith("ANSWER:"):
+            return s.split(":", 1)[1].strip() or raw.strip()
+    return raw.strip()
+
 
 def _format_turn(turn: OfficialTurn) -> str:
     return f"[{turn.session_date}] [{turn.role}] {turn.content.strip()}"
@@ -69,6 +98,7 @@ class AzureOpenAIReader:
         api_version: str | None = None,
         max_tokens: int = 200,
         temperature: float = 0.0,
+        aggregation_cot: bool = False,
     ) -> None:
         try:
             from openai import AzureOpenAI
@@ -87,6 +117,7 @@ class AzureOpenAIReader:
         self.name = f"azure-reader-{self._deployment}"
         self._max_tokens = max_tokens
         self._temperature = temperature
+        self._aggregation_cot = aggregation_cot
 
     def read(
         self,
@@ -95,16 +126,26 @@ class AzureOpenAIReader:
     ) -> str:
         ordered = _chronological(retrieved_turns)
         context = "\n".join(_format_turn(t) for t in ordered)
+        is_agg = (
+            self._aggregation_cot
+            and classify_question(episode.question, episode.question_type) == "aggregation"
+        )
+        if is_agg:
+            template = _AGGREGATION_USER_TEMPLATE
+            max_tokens = max(self._max_tokens, 600)
+        else:
+            template = _READER_USER_TEMPLATE
+            max_tokens = self._max_tokens
         try:
             rsp = self._client.chat.completions.create(
                 model=self._deployment,
                 temperature=self._temperature,
-                max_tokens=self._max_tokens,
+                max_tokens=max_tokens,
                 messages=[
                     {"role": "system", "content": _READER_SYSTEM},
                     {
                         "role": "user",
-                        "content": _READER_USER_TEMPLATE.format(
+                        "content": template.format(
                             today=episode.question_date,
                             context=context or "(no excerpts retrieved)",
                             question=episode.question,
@@ -115,7 +156,8 @@ class AzureOpenAIReader:
         except Exception:
             # Treat as abstention so downstream judge handles it correctly.
             return "I don't know."
-        return (rsp.choices[0].message.content or "").strip()
+        raw = (rsp.choices[0].message.content or "").strip()
+        return _final_answer(raw) if is_agg else raw
 
 
 __all__ = ["AzureOpenAIReader"]

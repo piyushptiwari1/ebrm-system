@@ -199,6 +199,14 @@ def main() -> int:
     )
     p.add_argument("--top-k", type=int, default=5)
     p.add_argument(
+        "--aggregation-cot",
+        action="store_true",
+        help=(
+            "For aggregation questions, use a list-then-count CoT reader "
+            "prompt that enumerates items before reporting the total (v0.25)."
+        ),
+    )
+    p.add_argument(
         "--per-type-top-k",
         action="store_true",
         help=(
@@ -362,7 +370,7 @@ def main() -> int:
     if args.reader == "azure":
         from benchmarks.reader.azure_llm import AzureOpenAIReader
 
-        reader = AzureOpenAIReader()
+        reader = AzureOpenAIReader(aggregation_cot=args.aggregation_cot)
 
     judge = None
     if args.judge == "azure":
@@ -456,6 +464,7 @@ def main() -> int:
             "judge": getattr(judge, "name", args.judge),
             "top_k": args.top_k,
             "per_type_top_k": args.per_type_top_k,
+            "aggregation_cot": args.aggregation_cot,
             "rrf_k": args.rrf_k,
             "per_retriever_k": args.per_retriever_k,
             "rerank_candidate_k": args.rerank_candidate_k,
