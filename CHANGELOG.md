@@ -8,6 +8,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed — preference & aggregation reader prompts
 
+**Measured: 76.6 % on LongMemEval oracle (n=500) — NEW SOTA, +4.4pt over v0.22.**
+
+Per-type (vs v0.22 baseline):
+- single-session-preference: **56.7 % (+43.3pt — was 13.3)** 🚀
+- single-session-assistant:  98.2 % (+3.6pt — was 94.6)
+- knowledge-update:          83.3 % (+3.8pt — was 79.5)
+- multi-session:             66.2 % (+4.5pt — was 61.7)
+- single-session-user:       92.9 % (+1.5pt — was 91.4)
+- temporal-reasoning:        69.9 % (-2.3pt — was 72.2)
+
+Wall: ~30 min on T4 with `--top-k 10`.
+
+### Fixed — preference & aggregation reader prompts
+
 Diagnosed v0.22 ceiling: retrieval miss = 0 across all categories. All
 remaining failures are reader-side. Two specific bugs found:
 
