@@ -8,6 +8,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added — per-type top_k routing for aggregation vs chronology
 
+**Measured: 77.4 % on LongMemEval oracle (n=500) — NEW SOTA, +0.8pt over v0.23.**
+
+Per-type (vs v0.23 baseline):
+- temporal-reasoning:        72.9 % (+3.0pt — was 69.9, recovered v0.22 regression)
+- single-session-user:       94.3 % (+1.4pt — was 92.9)
+- multi-session:             65.4 % (-0.8pt — was 66.2; reader still miscounts even with 20 candidates)
+- knowledge-update:          83.3 % (flat)
+- single-session-preference: 56.7 % (flat)
+- single-session-assistant:  98.2 % (flat)
+
+Wall: ~30 min on T4. Chronology recovered cleanly via temporal=`min(default,5)`.
+
+### Added — per-type top_k routing for aggregation vs chronology
+
 Diagnosed v0.23 leftover: 32/36 multi-session reader-wrong failures were
 aggregation undercounts ("how many" / "how much total"), and temporal
 regressed -2.3pt at top_k=10 because more excerpts confused chronology.
