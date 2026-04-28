@@ -43,21 +43,22 @@ from benchmarks.datasets import (  # noqa: E402
 )
 from benchmarks.embedders.hash import HashEmbedder  # noqa: E402
 from benchmarks.entity import EntityReranker  # noqa: E402
-from benchmarks.fusion import LLMFusionReranker  # noqa: E402
-from benchmarks.router import classify_question, top_k_for  # noqa: E402
 from benchmarks.extraction import (  # noqa: E402
     ExtractedMemory,
     MemoryExtractor,
     augment_episode_with_memories,
 )
+from benchmarks.fusion import LLMFusionReranker  # noqa: E402
 from benchmarks.retrieval import (  # noqa: E402
     BM25Retriever,
     DenseRetriever,
+    MultiQueryRetriever,
     NeighborExpander,
     Retriever,
     RRFRetriever,
     ScoredTurn,
 )
+from benchmarks.router import classify_question, top_k_for  # noqa: E402
 from benchmarks.temporal import TemporalReranker  # noqa: E402
 
 from ebrm_system import __version__ as ebrm_version  # noqa: E402
@@ -264,6 +265,36 @@ def main() -> int:
         help="Number of candidates fed to the fusion reranker (default 20).",
     )
     p.add_argument(
+        "--multi-query",
+        action="store_true",
+        help=(
+            "v0.27: For targeted question types (default: multi-session + "
+            "aggregation), rewrite the question into 3 alternative phrasings "
+            "via gpt-4o-mini, run the base retriever per query, RRF-fuse the "
+            "candidates, then feed the merged list into the rest of the "
+            "pipeline (entity/temporal/fusion rerank, neighbor expansion, "
+            "reader). Mirrors LangChain MultiQueryRetriever / IRCoT / "
+            "Self-Ask. Cached. Opt-in, default OFF."
+        ),
+    )
+    p.add_argument(
+        "--multi-query-types",
+        default="multi-session,aggregation",
+        help=(
+            "Comma-separated router tags or question_types where multi-query "
+            "applies. Recognised values: aggregation, temporal, "
+            "recommendation, general (router tags) and any LongMemEval "
+            "question_type (e.g. multi-session, knowledge-update). Default: "
+            "'multi-session,aggregation' — the two weakest slices in v0.24."
+        ),
+    )
+    p.add_argument(
+        "--multi-query-per-k",
+        type=int,
+        default=20,
+        help="Per-rewritten-query candidate cap before RRF (default 20).",
+    )
+    p.add_argument(
         "--neighbor-window",
         type=int,
         default=0,
@@ -328,40 +359,67 @@ def main() -> int:
         rrf_k=args.rrf_k,
         per_retriever_k=args.per_retriever_k,
     )
-    retriever = _maybe_wrap_reranker(
-        base_retriever,
-        reranker_name=args.reranker,
-        candidate_k=args.rerank_candidate_k,
-    )
-    if args.entity_rerank:
-        retriever = EntityReranker(
-            retriever, alpha=args.entity_alpha, candidate_k=args.rerank_candidate_k
-        )
-        print(f"[entity] alpha={args.entity_alpha}", flush=True)
-    if args.temporal_rerank:
-        retriever = TemporalReranker(
-            retriever,
-            alpha=args.temporal_alpha,
-            decay_days=args.temporal_decay_days,
+
+    def _wrap_pipeline(stage1: Retriever) -> Retriever:
+        r: Retriever = _maybe_wrap_reranker(
+            stage1,
+            reranker_name=args.reranker,
             candidate_k=args.rerank_candidate_k,
         )
+        if args.entity_rerank:
+            r = EntityReranker(
+                r, alpha=args.entity_alpha, candidate_k=args.rerank_candidate_k
+            )
+        if args.temporal_rerank:
+            r = TemporalReranker(
+                r,
+                alpha=args.temporal_alpha,
+                decay_days=args.temporal_decay_days,
+                candidate_k=args.rerank_candidate_k,
+            )
+        if args.fusion_rerank:
+            r = LLMFusionReranker(
+                base=r,
+                candidate_k=args.fusion_candidate_k,
+                cache_dir=cache_dir / "fusion",
+            )
+        if args.neighbor_window > 0:
+            r = NeighborExpander(r, window=args.neighbor_window)
+        return r
+
+    retriever = _wrap_pipeline(base_retriever)
+    if args.entity_rerank:
+        print(f"[entity] alpha={args.entity_alpha}", flush=True)
+    if args.temporal_rerank:
         print(
             f"[temporal] alpha={args.temporal_alpha} decay={args.temporal_decay_days}d",
             flush=True,
         )
     if args.fusion_rerank:
-        retriever = LLMFusionReranker(
-            base=retriever,
-            candidate_k=args.fusion_candidate_k,
-            cache_dir=cache_dir / "fusion",
+        print(f"[fusion] candidate_k={args.fusion_candidate_k}", flush=True)
+    if args.neighbor_window > 0:
+        print(f"[neighbors] window={args.neighbor_window}", flush=True)
+
+    mq_retriever: Retriever | None = None
+    mq_target_set: frozenset[str] = frozenset()
+    if args.multi_query:
+        from benchmarks.query_rewrite import AzureOpenAIQueryRewriter
+
+        rewriter = AzureOpenAIQueryRewriter(cache_dir=cache_dir / "query_rewrite")
+        mq_base = MultiQueryRetriever(
+            base=base_retriever,
+            rewriter=rewriter,
+            per_query_k=args.multi_query_per_k,
+        )
+        mq_retriever = _wrap_pipeline(mq_base)
+        mq_target_set = frozenset(
+            t.strip() for t in args.multi_query_types.split(",") if t.strip()
         )
         print(
-            f"[fusion] candidate_k={args.fusion_candidate_k}",
+            f"[multi-query] per_k={args.multi_query_per_k} "
+            f"targets={sorted(mq_target_set)}",
             flush=True,
         )
-    if args.neighbor_window > 0:
-        retriever = NeighborExpander(retriever, window=args.neighbor_window)
-        print(f"[neighbors] window={args.neighbor_window}", flush=True)
     extractor = _build_extractor(args.extraction, cache_dir=cache_dir)
     if extractor is not None:
         print(f"[extractor] {extractor.name} (additive corpus)", flush=True)
@@ -392,8 +450,15 @@ def main() -> int:
             tag = classify_question(ep.question, ep.question_type)
             this_top_k = top_k_for(tag, default=args.top_k)
         else:
+            tag = classify_question(ep.question, ep.question_type)
             this_top_k = args.top_k
-        retrieved_scored: list[ScoredTurn] = retriever.retrieve(
+        if mq_retriever is not None and (
+            tag in mq_target_set or ep.question_type in mq_target_set
+        ):
+            active_retriever = mq_retriever
+        else:
+            active_retriever = retriever
+        retrieved_scored: list[ScoredTurn] = active_retriever.retrieve(
             retrieval_episode, top_k=this_top_k
         )
         retrieved = [st.turn for st in retrieved_scored]
@@ -480,6 +545,11 @@ def main() -> int:
             "entity_alpha": args.entity_alpha,
             "fusion_rerank": args.fusion_rerank,
             "fusion_candidate_k": args.fusion_candidate_k,
+            "multi_query": args.multi_query,
+            "multi_query_types": (
+                sorted(mq_target_set) if args.multi_query else None
+            ),
+            "multi_query_per_k": args.multi_query_per_k,
             "avg_memories_per_episode": (
                 round(sum(extracted_counts) / len(extracted_counts), 2)
                 if extracted_counts
