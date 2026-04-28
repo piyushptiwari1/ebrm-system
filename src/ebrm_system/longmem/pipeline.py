@@ -154,7 +154,7 @@ class LongMemPipeline:
 
         retr: Any = RRFRetriever(
             [
-                DenseRetriever(AzureOpenAIEmbedder(cache_dir=cache_path / "embed")),
+                DenseRetriever(AzureOpenAIEmbedder(cache_dir=cache_path / "embed")),  # type: ignore[arg-type]
                 BM25Retriever(),
             ]
         )
@@ -256,7 +256,7 @@ class LongMemPipeline:
             cache_dir=cache_path / "embed",
             timeout=timeout,
         )
-        retr: Any = RRFRetriever([DenseRetriever(embedder_obj), BM25Retriever()])
+        retr: Any = RRFRetriever([DenseRetriever(embedder_obj), BM25Retriever()])  # type: ignore[arg-type]
         if reranker == "bge":
             from benchmarks.retrieval.reranker import CrossEncoderReranker
 

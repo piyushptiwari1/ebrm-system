@@ -111,6 +111,13 @@ disallow_untyped_defs = true
 ignore_missing_imports = true
 files = ["src/ebrm_system"]
 
+# benchmarks/ is shipped in the wheel as the LongMemEval reference impl
+# but is intentionally not strictly typed. The longmem facade lazy-imports
+# from benchmarks.* — silence transitive errors here.
+[[tool.mypy.overrides]]
+module = "benchmarks.*"
+ignore_errors = true
+
 # ---------- Pytest ----------
 [tool.pytest.ini_options]
 minversion = "8.0"

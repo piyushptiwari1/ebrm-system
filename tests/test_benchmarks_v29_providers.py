@@ -14,6 +14,7 @@ import pytest
 from benchmarks.datasets.longmemeval_official import OfficialEpisode, OfficialTurn
 
 pytest.importorskip("openai", reason="OpenAI SDK required")
+pytest.importorskip("rank_bm25", reason="BM25Retriever needs rank-bm25")
 
 
 def _episode(question: str = "anything?") -> OfficialEpisode:
