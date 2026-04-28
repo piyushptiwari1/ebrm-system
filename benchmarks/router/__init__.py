@@ -40,6 +40,15 @@ _RECOMMEND_CUES: tuple[str, ...] = (
     "any recommendations",
     "give me suggestions",
     "give me recommendations",
+    "any tips",
+    "any tip ",
+    "any ideas",
+    "what do you think",
+    "could there be a reason",
+    "i'm trying to decide",
+    "what would be a good",
+    "what works for me",
+    "i'm looking for",
 )
 
 
