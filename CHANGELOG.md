@@ -6,11 +6,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.29.0] - unreleased
 
-### Added — public ``ebrm_system.longmem`` API + self-consistency reader
+### Added — public ``ebrm_system.longmem`` API + self-consistency reader + multi-provider support
 
-Two changes targeted at the user experience of the LongMemEval-tuned
-stack and at the reader-bound failure budget identified in v0.28's
-diagnostic.
+Three changes targeted at user adoption: ship the LongMemEval pipeline
+in the wheel, attack the reader-bound failure budget identified in
+v0.28, and make the pipeline work with any inference provider.
 
 #### 1. Public LongMem API
 
@@ -44,42 +44,80 @@ reader can be swapped via the constructor; `from_default(...)` wires the
 v0.28 default stack (BM25 + dense Azure + RRF + BGE cross-encoder + LLM
 fusion + neighbor expansion + Azure reader with aggregation-CoT).
 
-#### 2. Self-consistency reader
+#### 2. Multi-provider support — works with any OpenAI-compatible endpoint
 
-`AzureOpenAIReader` now accepts `n_samples: int = 1` and
-`sc_temperature: float = 0.5`. When `n_samples > 1` the reader performs
-a single API call with `n=N`, samples N completions at
-`sc_temperature`, and majority-votes on the final answer (post-CoT
-extraction when aggregation- or temporal-ordering-CoT is active). Tie-
-breaking biases against `"I don't know"` so abstentions never beat a
-substantive answer with equal vote count.
+The pipeline now works against **OpenAI, Ollama, vLLM, llama.cpp server,
+OpenRouter, Together, Groq, Anyscale, LM Studio, Mistral, DeepInfra**,
+and any other server speaking the OpenAI HTTP API. Four convenience
+classmethods cover the common cases:
+
+```python
+LongMemPipeline.from_openai(api_key="sk-...")              # OpenAI proper
+LongMemPipeline.from_ollama()                              # local, no key
+LongMemPipeline.from_openrouter(chat_model="anthropic/claude-3.5-sonnet")
+LongMemPipeline.from_provider(                             # fully custom
+    chat_model="...", embed_model="...",
+    base_url="http://my-vllm:8000/v1", api_key="...",
+)
+```
+
+Two new building blocks back this:
+
+- `benchmarks.embedders.openai_compatible.OpenAICompatibleEmbedder` —
+  takes `model`, `base_url`, `api_key`. Same disk caching + retry as
+  the Azure embedder; cache namespaced by `(model, base_url)` to avoid
+  collisions across providers.
+- `benchmarks.reader.openai_compatible.OpenAICompatibleReader` —
+  subclasses `AzureOpenAIReader` to reuse 100 % of the prompt logic,
+  gating, and self-consistency voting. Only the chat client differs.
+
+**Important caveat**: only `from_default` (Azure) is benchmark-validated
+at 77.2 %. Other providers will score differently depending on the
+chat / embedding model you choose. The non-Azure constructors default
+to `fusion_rerank=False` and `reranker="none"` to keep latency / cost
+sane on local backends.
+
+#### 3. Self-consistency reader
+
+`AzureOpenAIReader` and `OpenAICompatibleReader` now accept
+`n_samples: int = 1` and `sc_temperature: float = 0.5`. When
+`n_samples > 1` the reader performs a single API call with `n=N`,
+samples N completions at `sc_temperature`, and majority-votes on the
+final answer (post-CoT extraction when aggregation- or temporal-
+ordering-CoT is active). Tie-breaking biases against `"I don't know"`
+so abstentions never beat a substantive answer with equal vote count.
 
 Exposed via the benchmark runner as `--reader-n-samples N
 --reader-sc-temperature 0.5` and via the facade as
-`LongMemPipeline.from_default(n_samples=3)`.
+`LongMemPipeline.from_*(n_samples=3)`.
 
 This is **opt-in, default OFF**: the v0.29 default behaviour is
 identical to v0.28 (77.2 % oracle). The setting `n_samples=3` triples
 reader output cost; ship-or-park decision happens after the v0.29 VM
 benchmark.
 
-#### Why these two
+#### Why these three
 
 v0.28's diagnostic showed retrieval recall on failures = 100 % — the
 entire ~22-point error budget is reader+judge. Self-consistency is the
 cheapest, most-cited OSS lever for reader-bound failures (Wang et al.
 2023; consistently +2-5 pt on math/QA benchmarks at n=3). The public
-API change has zero accuracy impact but fixes the largest UX gap:
-through v0.28 the LongMemEval pipeline was unreachable from
-`pip install ebrm-system`.
+API + multi-provider changes have zero accuracy impact but fix the
+biggest UX gaps: through v0.28 the LongMemEval pipeline was unreachable
+from `pip install ebrm-system`, and the only supported provider was
+Azure OpenAI — which excluded everyone without an Azure subscription.
 
 ### Tests
 
-- 21 new tests in `tests/test_benchmarks_v29.py` covering
+- 21 tests in `tests/test_benchmarks_v29.py` covering
   `_normalize_answer`, `_majority_vote`, `n_samples` end-to-end with
-  stubbed Azure client, public facade imports / dataclass shape /
+  stubbed Azure client, public facade imports, dataclass shapes, and
   pipeline happy path.
-- Total: 438 tests passing (was 417 in v0.28 + 21 v0.29 - 0 stale).
+- 14 tests in `tests/test_benchmarks_v29_providers.py` covering
+  OpenAI-compatible reader/embedder construction, env-var fallbacks,
+  cache namespacing, and the four provider classmethods
+  (`from_openai`, `from_ollama`, `from_openrouter`, `from_provider`).
+- Total: **452 tests passing** (was 417 in v0.28).
 
 ## [0.28.0] - 2026-04-28
 

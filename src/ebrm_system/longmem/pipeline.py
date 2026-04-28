@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -174,6 +175,182 @@ class LongMemPipeline:
             sc_temperature=sc_temperature,
         )
         return cls(retriever=retr, reader=rdr, top_k=top_k)
+
+    # ------------------------------------------------------------------
+    # Multi-provider convenience constructors (v0.29.1+)
+    # ------------------------------------------------------------------
+
+    @classmethod
+    def from_provider(
+        cls,
+        *,
+        chat_model: str,
+        embed_model: str,
+        base_url: str = "https://api.openai.com/v1",
+        api_key: str | None = None,
+        top_k: int = 10,
+        cache_dir: str | Path = "cache",
+        neighbor_window: int = 1,
+        fusion_rerank: bool = False,
+        aggregation_cot: bool = True,
+        reranker: str = "none",
+        n_samples: int = 1,
+        sc_temperature: float = 0.5,
+        timeout: float = 60.0,
+    ) -> LongMemPipeline:
+        """Build a pipeline against any OpenAI-compatible provider.
+
+        Works with **OpenAI, Ollama, vLLM, llama.cpp server, OpenRouter,
+        Together, Groq, Anyscale, LM Studio, Mistral, DeepInfra**, and any
+        other server speaking the OpenAI HTTP API. For Azure OpenAI,
+        prefer :meth:`from_default` (it uses Azure-specific auth and is
+        the SOTA-validated path).
+
+        Defaults are deliberately conservative: ``fusion_rerank=False``
+        and ``reranker="none"`` keep latency / cost low for non-SOTA
+        backends. Turn them on if your provider can sustain the extra
+        chat / cross-encoder load.
+
+        Examples
+        --------
+        OpenAI proper::
+
+            LongMemPipeline.from_provider(
+                chat_model="gpt-4o-mini",
+                embed_model="text-embedding-3-small",
+                api_key=os.environ["OPENAI_API_KEY"],
+            )
+
+        Ollama (local, no key needed)::
+
+            LongMemPipeline.from_ollama(
+                chat_model="llama3.1:8b",
+                embed_model="nomic-embed-text",
+            )
+
+        OpenRouter::
+
+            LongMemPipeline.from_provider(
+                chat_model="anthropic/claude-3.5-sonnet",
+                embed_model="text-embedding-3-small",
+                base_url="https://openrouter.ai/api/v1",
+                api_key=os.environ["OPENROUTER_API_KEY"],
+            )
+        """
+        from benchmarks.embedders.openai_compatible import OpenAICompatibleEmbedder
+        from benchmarks.reader.openai_compatible import OpenAICompatibleReader
+        from benchmarks.retrieval import (
+            BM25Retriever,
+            DenseRetriever,
+            NeighborExpander,
+            RRFRetriever,
+        )
+
+        cache_path = Path(cache_dir)
+        cache_path.mkdir(parents=True, exist_ok=True)
+
+        embedder_obj = OpenAICompatibleEmbedder(
+            model=embed_model,
+            base_url=base_url,
+            api_key=api_key,
+            cache_dir=cache_path / "embed",
+            timeout=timeout,
+        )
+        retr: Any = RRFRetriever([DenseRetriever(embedder_obj), BM25Retriever()])
+        if reranker == "bge":
+            from benchmarks.retrieval.reranker import CrossEncoderReranker
+
+            retr = CrossEncoderReranker(retr, candidate_k=20)
+        elif reranker != "none":
+            raise ValueError(f"unknown reranker {reranker!r}")
+        if fusion_rerank:
+            from benchmarks.fusion import LLMFusionReranker
+
+            # NOTE: fusion uses the Azure-tuned LLMFusionReranker; for
+            # non-Azure providers it falls back to text-similarity scoring.
+            retr = LLMFusionReranker(base=retr, candidate_k=20, cache_dir=cache_path / "fusion")
+        if neighbor_window > 0:
+            retr = NeighborExpander(retr, window=neighbor_window)
+
+        rdr = OpenAICompatibleReader(
+            model=chat_model,
+            base_url=base_url,
+            api_key=api_key,
+            aggregation_cot=aggregation_cot,
+            n_samples=n_samples,
+            sc_temperature=sc_temperature,
+            timeout=timeout,
+        )
+        return cls(retriever=retr, reader=rdr, top_k=top_k)
+
+    @classmethod
+    def from_openai(
+        cls,
+        *,
+        chat_model: str = "gpt-4o-mini",
+        embed_model: str = "text-embedding-3-small",
+        api_key: str | None = None,
+        **kwargs: Any,
+    ) -> LongMemPipeline:
+        """Build against OpenAI proper. Reads ``OPENAI_API_KEY`` if unset."""
+        return cls.from_provider(
+            chat_model=chat_model,
+            embed_model=embed_model,
+            base_url="https://api.openai.com/v1",
+            api_key=api_key,
+            **kwargs,
+        )
+
+    @classmethod
+    def from_ollama(
+        cls,
+        *,
+        chat_model: str = "llama3.1:8b",
+        embed_model: str = "nomic-embed-text",
+        base_url: str = "http://localhost:11434/v1",
+        timeout: float = 300.0,
+        **kwargs: Any,
+    ) -> LongMemPipeline:
+        """Build against a local Ollama instance. No API key required.
+
+        Default models assume ``ollama pull llama3.1:8b`` and
+        ``ollama pull nomic-embed-text``. Timeout defaults to 5 min
+        because local CPU inference can be slow on n>1 sampling.
+        """
+        return cls.from_provider(
+            chat_model=chat_model,
+            embed_model=embed_model,
+            base_url=base_url,
+            api_key="not-needed",
+            timeout=timeout,
+            **kwargs,
+        )
+
+    @classmethod
+    def from_openrouter(
+        cls,
+        *,
+        chat_model: str,
+        embed_model: str = "text-embedding-3-small",
+        api_key: str | None = None,
+        **kwargs: Any,
+    ) -> LongMemPipeline:
+        """Build against OpenRouter. Reads ``OPENROUTER_API_KEY`` if unset.
+
+        Note: OpenRouter does not host embedding models — pass an
+        ``embed_model`` from a provider that does (or use a different
+        ``embed_base_url`` by constructing :class:`OpenAICompatibleEmbedder`
+        directly).
+        """
+        if api_key is None:
+            api_key = os.environ.get("OPENROUTER_API_KEY")
+        return cls.from_provider(
+            chat_model=chat_model,
+            embed_model=embed_model,
+            base_url="https://openrouter.ai/api/v1",
+            api_key=api_key,
+            **kwargs,
+        )
 
     # ------------------------------------------------------------------
     # Mutating API

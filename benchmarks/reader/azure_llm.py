@@ -195,6 +195,28 @@ class AzureOpenAIReader:
         self._n_samples = n_samples
         self._sc_temperature = sc_temperature
 
+    def _chat_complete(
+        self,
+        messages: list[dict],
+        *,
+        temperature: float,
+        max_tokens: int,
+        n: int,
+    ) -> list[str]:
+        """Call the LLM and return N raw completion strings.
+
+        Subclasses (e.g. :class:`OpenAICompatibleReader`) override this to
+        swap the client without re-implementing prompt logic.
+        """
+        rsp = self._client.chat.completions.create(
+            model=self._deployment,
+            temperature=temperature,
+            max_tokens=max_tokens,
+            n=n,
+            messages=messages,
+        )
+        return [(c.message.content or "").strip() for c in rsp.choices]
+
     def read(
         self,
         episode: OfficialEpisode,
@@ -224,28 +246,27 @@ class AzureOpenAIReader:
         # Self-consistency: n>1 → sample at sc_temperature, vote on ANSWER.
         use_sc = self._n_samples > 1
         temperature = self._sc_temperature if use_sc else self._temperature
+        messages = [
+            {"role": "system", "content": _READER_SYSTEM},
+            {
+                "role": "user",
+                "content": template.format(
+                    today=episode.question_date,
+                    context=context or "(no excerpts retrieved)",
+                    question=episode.question,
+                ),
+            },
+        ]
         try:
-            rsp = self._client.chat.completions.create(
-                model=self._deployment,
+            raws = self._chat_complete(
+                messages,
                 temperature=temperature,
                 max_tokens=max_tokens,
                 n=self._n_samples,
-                messages=[
-                    {"role": "system", "content": _READER_SYSTEM},
-                    {
-                        "role": "user",
-                        "content": template.format(
-                            today=episode.question_date,
-                            context=context or "(no excerpts retrieved)",
-                            question=episode.question,
-                        ),
-                    },
-                ],
             )
         except Exception:
             # Treat as abstention so downstream judge handles it correctly.
             return "I don't know."
-        raws = [(c.message.content or "").strip() for c in rsp.choices]
         answers = [_final_answer(r) for r in raws] if (is_agg or is_ord) else raws
         return _majority_vote(answers)
 
