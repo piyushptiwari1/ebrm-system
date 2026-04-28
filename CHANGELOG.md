@@ -4,6 +4,79 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [unreleased] - v0.27 experiment — NEGATIVE RESULT, not published
+
+**Measured: 74.8 % on LongMemEval oracle (n=500) — −2.6 pt vs v0.24/v0.25 default (77.4 %).**
+
+Implemented multi-query retrieval (MQR) — the technique behind LangChain
+``MultiQueryRetriever``, IRCoT, and Self-Ask — strictly router-gated to
+multi-session and aggregation questions. For those classes, gpt-4o-mini
+rewrites the question into 3 alternative phrasings, the base hybrid
+retriever runs once per query, and candidates are RRF-fused before the
+existing rerank + neighbor + reader stack.
+
+Branch ``feature/v0.27-multi-query`` (commit 4f99ab9). Adds:
+
+- ``benchmarks/query_rewrite/{__init__,base,azure_llm}.py`` — cached
+  Azure OpenAI rewriter with deterministic fallback to ``[original]``.
+- ``benchmarks/retrieval/multi_query.py`` — RRF fuser over per-query
+  candidate lists.
+- ``--multi-query``, ``--multi-query-types``, ``--multi-query-per-k``
+  CLI flags. Default OFF (= v0.25 behaviour).
+- ``tests/test_benchmarks_v27.py`` — 10 tests, all pass; 95 % suite cov.
+
+Per-type deltas vs v0.24 (with the flag ON, targets multi-session +
+aggregation):
+
+| type                       | v0.24    | v0.27    | Δ        |
+|----------------------------|----------|----------|----------|
+| temporal-reasoning         | 72.93 %  | 69.17 %  | −3.8     |
+| multi-session              | 65.41 %  | 60.90 %  | **−4.5** |
+| knowledge-update           | 83.33 %  | 83.33 %  | 0        |
+| single-session-preference  | 56.67 %  | 53.33 %  | −3.3     |
+| single-session-assistant   | 98.21 %  | 96.43 %  | −1.8     |
+| single-session-user        | 94.29 %  | 94.29 %  | 0        |
+| **overall**                | **77.40 %** | **74.80 %** | **−2.6** |
+
+Diagnosis (why a "best practice" technique regressed):
+
+- The pipeline is **precision-bound, not recall-bound**. v0.21–v0.24
+  added BGE cross-encoder + LLMFusionReranker + per-type top_k routing,
+  which together already surface the gold turn near the top of the
+  candidate list. Adding 3 more queries inflates the RRF candidate pool
+  with paraphrase-similar but goal-divergent turns; the reranker then
+  has to demote them, and occasionally fails — pushing the gold turn
+  below top_k.
+- Most striking: **multi-session itself got worse (−4.5)** — the slice
+  MQR was specifically designed to help. The rewriter, given prompts
+  like "across all sessions, did the user ever X?", correctly produces
+  per-aspect sub-queries, but they recall turns from the wrong session
+  whose surface form matches the sub-aspect; RRF then ranks them above
+  the gold session because they appear in multiple sub-query top-Ks.
+- Temporal also regressed (−3.8) even though MQR was NOT supposed to
+  fire on it. Cause: aggregation cues in the router (e.g. "how many
+  days between") classify some temporal questions as aggregation, so
+  MQR did fire on them; the broader retrieval scrambles chronology.
+- The two slices that did NOT change (knowledge-update, user) confirm
+  MQR was correctly NOT applied there.
+
+Lessons (for future versions):
+
+- Stop adding **recall-boosting** levers — measure precision@top_k of
+  the gold turn first; if it's already > 0.9 the bottleneck is the
+  reader, not the retriever.
+- Router cues that overlap across question types (aggregation cues
+  matching temporal questions) leak gating; classify on
+  ``question_type`` only when available, not on surface text.
+- A technique being SOTA on LangChain demos / IRCoT / Self-Ask does not
+  imply gain on LongMemEval, where the haystack is small (≤ 500 turns)
+  and well-organized into sessions — the original BM25+dense+rerank
+  stack already saturates recall.
+
+Branch preserved as a record. Not merged, not published. Main stays at
+v0.25.0 behaviour. Result JSON archived at
+``benchmarks/results/longmemeval-oracle-v0.27.0.json``.
+
 ## [unreleased] - v0.26 experiment — NEGATIVE RESULT, not published
 
 **Measured: 74.2 % on LongMemEval oracle (n=500) — −3.2 pt vs v0.24/v0.25 default (77.4 %).**
