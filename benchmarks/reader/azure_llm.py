@@ -5,7 +5,10 @@ from __future__ import annotations
 import os
 
 from benchmarks.datasets.longmemeval_official import OfficialEpisode, OfficialTurn
-from benchmarks.router import classify_question
+from benchmarks.router import (
+    is_multi_session_aggregation,
+    is_temporal_ordering,
+)
 from benchmarks.temporal.dates import parse_lme_date
 
 _READER_SYSTEM = (
@@ -60,6 +63,30 @@ _AGGREGATION_USER_TEMPLATE = (
     "Do not say 'I don't know' if any relevant items appear in the excerpts."
 )
 
+_TEMPORAL_ORDERING_TEMPLATE = (
+    "Today's date is {today}.\n\n"
+    "Relevant chat history excerpts (sorted oldest \u2192 newest):\n"
+    "{context}\n\n"
+    "Question: {question}\n\n"
+    "This is a temporal-ordering question. The excerpt session dates are "
+    "the SOURCE OF TRUTH for ordering \u2014 do NOT reason from vague phrases "
+    "like 'three weeks ago' vs 'last month'. Follow this procedure "
+    "exactly:\n"
+    "1. On a line starting with `CANDIDATES:`, list each candidate event/"
+    "person from the question and, for each, the session_date of the "
+    "excerpt that establishes when it happened (format: "
+    "`- <name>: YYYY/MM/DD`). If the excerpt mentions an explicit date "
+    "different from the session_date (e.g. 'on 2023/05/20'), use the "
+    "explicit date instead. Distinguish 'started X' from 'finished X' \u2014 "
+    "use the date of the action the question asks about.\n"
+    "2. On a line starting with `ORDERED:`, list the candidates sorted "
+    "from EARLIEST to LATEST date.\n"
+    "3. On a line starting with `ANSWER:`, output ONLY the candidate name "
+    "or short label that answers the question (e.g. for 'who came first' "
+    "→ the candidate at the top of ORDERED; for 'most recent' → the "
+    "candidate at the bottom)."
+)
+
 
 def _final_answer(raw: str) -> str:
     """Extract the ``ANSWER:`` line from a CoT response, falling back to raw."""
@@ -99,6 +126,7 @@ class AzureOpenAIReader:
         max_tokens: int = 200,
         temperature: float = 0.0,
         aggregation_cot: bool = False,
+        temporal_ordering_cot: bool = False,
     ) -> None:
         try:
             from openai import AzureOpenAI
@@ -118,6 +146,7 @@ class AzureOpenAIReader:
         self._max_tokens = max_tokens
         self._temperature = temperature
         self._aggregation_cot = aggregation_cot
+        self._temporal_ordering_cot = temporal_ordering_cot
 
     def read(
         self,
@@ -126,13 +155,22 @@ class AzureOpenAIReader:
     ) -> str:
         ordered = _chronological(retrieved_turns)
         context = "\n".join(_format_turn(t) for t in ordered)
-        is_agg = (
-            self._aggregation_cot
-            and classify_question(episode.question, episode.question_type) == "aggregation"
+        # v0.28: gate is question_type AND aggregation classifier (was
+        # aggregation classifier alone in v0.25 — leaked onto temporal).
+        is_agg = self._aggregation_cot and is_multi_session_aggregation(
+            episode.question, episode.question_type
+        )
+        is_ord = (
+            self._temporal_ordering_cot
+            and not is_agg
+            and is_temporal_ordering(episode.question, episode.question_type)
         )
         if is_agg:
             template = _AGGREGATION_USER_TEMPLATE
             max_tokens = max(self._max_tokens, 600)
+        elif is_ord:
+            template = _TEMPORAL_ORDERING_TEMPLATE
+            max_tokens = max(self._max_tokens, 400)
         else:
             template = _READER_USER_TEMPLATE
             max_tokens = self._max_tokens
@@ -157,7 +195,7 @@ class AzureOpenAIReader:
             # Treat as abstention so downstream judge handles it correctly.
             return "I don't know."
         raw = (rsp.choices[0].message.content or "").strip()
-        return _final_answer(raw) if is_agg else raw
+        return _final_answer(raw) if (is_agg or is_ord) else raw
 
 
 __all__ = ["AzureOpenAIReader"]

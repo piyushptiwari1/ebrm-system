@@ -100,9 +100,7 @@ def _patch_client(monkeypatch: pytest.MonkeyPatch, fake: _FakeOpenAI) -> None:
     monkeypatch.setattr(openai, "AzureOpenAI", lambda **_: fake)
 
 
-def test_fusion_reranks_in_returned_order(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_fusion_reranks_in_returned_order(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from benchmarks.fusion import LLMFusionReranker
 
     base = _Fixed(
@@ -141,9 +139,7 @@ def test_fusion_uses_disk_cache(monkeypatch: pytest.MonkeyPatch, tmp_path: Path)
     assert fake.calls == 1
 
 
-def test_fusion_handles_malformed_response(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_fusion_handles_malformed_response(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from benchmarks.fusion import LLMFusionReranker
 
     base = _Fixed(
@@ -160,9 +156,7 @@ def test_fusion_handles_malformed_response(
     assert [s.turn.content for s in out] == ["a", "b"]
 
 
-def test_fusion_sanitizes_invalid_indices(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_fusion_sanitizes_invalid_indices(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from benchmarks.fusion import LLMFusionReranker
 
     base = _Fixed(
@@ -181,9 +175,7 @@ def test_fusion_sanitizes_invalid_indices(
     assert [s.turn.content for s in out] == ["c", "a", "b"]
 
 
-def test_fusion_retries_then_succeeds(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_fusion_retries_then_succeeds(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     from benchmarks.fusion import llm_fusion
 
     monkeypatch.setattr(llm_fusion.time, "sleep", lambda *_: None)

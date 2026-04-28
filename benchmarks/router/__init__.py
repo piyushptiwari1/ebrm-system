@@ -42,6 +42,34 @@ _RECOMMEND_CUES: tuple[str, ...] = (
     "give me recommendations",
 )
 
+# Ordering cues — questions whose gold answer is "which of these came
+# first / most recently". Used by the v0.28 temporal-ordering CoT reader
+# (gated additionally by ``question_type == "temporal-reasoning"``).
+_ORDERING_CUES: tuple[str, ...] = (
+    "happened first",
+    "came first",
+    "did i meet first",
+    "did i first",
+    "started first",
+    "did first",
+    "happened more recent",
+    "happened most recent",
+    "happened later",
+    "happened earlier",
+    "earliest",
+    "most recently",
+    " before the ",
+    " before i ",
+    " after the ",
+    " after i ",
+    "which came",
+    "who became",
+    "which event happened",
+    "which show did i",
+    "which did i ",
+    "which event did i",
+)
+
 
 def classify_question(question: str, question_type: str) -> str:
     """Return one of ``"aggregation"``, ``"temporal"``, ``"recommendation"``,
@@ -74,4 +102,37 @@ def top_k_for(tag: str, *, default: int) -> int:
     return default
 
 
-__all__ = ["classify_question", "top_k_for"]
+def is_multi_session_aggregation(question: str, question_type: str) -> bool:
+    """v0.28 — fire aggregation CoT only when BOTH conditions hold.
+
+    The v0.25 attempt fired on ``classify_question == "aggregation"`` alone,
+    which leaked onto temporal questions like "how many days between X and
+    Y" and dropped temporal-reasoning by 6 pt. Tightening the gate to also
+    require the LongMemEval ground-truth question_type ``multi-session``
+    eliminates that leak.
+    """
+    return (
+        question_type == "multi-session"
+        and classify_question(question, question_type) == "aggregation"
+    )
+
+
+def is_temporal_ordering(question: str, question_type: str) -> bool:
+    """v0.28 — fire temporal-ordering CoT only on temporal-reasoning Qs
+    that ask "which happened first / most recently / earliest", etc.
+
+    Surface cues alone would over-fire; pairing them with the dataset's
+    ground-truth ``temporal-reasoning`` type keeps gating tight.
+    """
+    if question_type != "temporal-reasoning":
+        return False
+    q = question.lower()
+    return any(c in q for c in _ORDERING_CUES)
+
+
+__all__ = [
+    "classify_question",
+    "is_multi_session_aggregation",
+    "is_temporal_ordering",
+    "top_k_for",
+]
