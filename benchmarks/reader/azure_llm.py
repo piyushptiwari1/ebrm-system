@@ -5,7 +5,10 @@ from __future__ import annotations
 import os
 
 from benchmarks.datasets.longmemeval_official import OfficialEpisode, OfficialTurn
-from benchmarks.router import classify_question
+from benchmarks.router import (
+    is_multi_session_aggregation,
+    is_temporal_ordering,
+)
 from benchmarks.temporal.dates import parse_lme_date
 
 _READER_SYSTEM = (
@@ -46,18 +49,47 @@ _AGGREGATION_USER_TEMPLATE = (
     "Relevant chat history excerpts (sorted oldest \u2192 newest):\n"
     "{context}\n\n"
     "Question: {question}\n\n"
-    "This is a counting / total / aggregation question. Follow this "
+    "This is a multi-session counting / total / aggregation question. "
+    "Items are typically spread across DIFFERENT excerpts and DIFFERENT "
+    "sessions \u2014 each excerpt usually contributes ONE item. Follow this "
     "procedure exactly:\n"
     "1. On a line starting with `ITEMS:`, list every distinct relevant item "
-    "from the excerpts as a numbered list (1., 2., 3., ...). Include items "
-    "that match any phrasing of the question's criterion (e.g. "
-    "'bought OR worked on', 'pick up OR return'). Do not deduplicate items "
-    "that are clearly distinct.\n"
+    "from the excerpts as a numbered list (1., 2., 3., ...). Be EXHAUSTIVE: "
+    "scan every single excerpt before stopping. Include items that match "
+    "any phrasing of the question's criterion (e.g. 'bought OR worked on', "
+    "'pick up OR return', 'attended OR participated in'). Include items "
+    "mentioned only briefly, in passing, or in a list. Do not deduplicate "
+    "items that are clearly distinct (different scales, different colours, "
+    "different dates).\n"
     "2. On a line starting with `TOTAL:`, state the count or sum of the "
-    "items listed above.\n"
+    "items listed above. For sums of money or hours, show the addition.\n"
     "3. On a line starting with `ANSWER:`, give the final concise answer "
-    "(usually just the number or amount).\n"
+    "(usually just the number or amount, e.g. `5` or `$185`).\n"
     "Do not say 'I don't know' if any relevant items appear in the excerpts."
+)
+
+_TEMPORAL_ORDERING_TEMPLATE = (
+    "Today's date is {today}.\n\n"
+    "Relevant chat history excerpts (sorted oldest \u2192 newest):\n"
+    "{context}\n\n"
+    "Question: {question}\n\n"
+    "This is a temporal-ordering question. The excerpt session dates are "
+    "the SOURCE OF TRUTH for ordering \u2014 do NOT reason from vague phrases "
+    "like 'three weeks ago' vs 'last month'. Follow this procedure "
+    "exactly:\n"
+    "1. On a line starting with `CANDIDATES:`, list each candidate event/"
+    "person from the question and, for each, the session_date of the "
+    "excerpt that establishes when it happened (format: "
+    "`- <name>: YYYY/MM/DD`). If the excerpt mentions an explicit date "
+    "different from the session_date (e.g. 'on 2023/05/20'), use the "
+    "explicit date instead. Distinguish 'started X' from 'finished X' \u2014 "
+    "use the date of the action the question asks about.\n"
+    "2. On a line starting with `ORDERED:`, list the candidates sorted "
+    "from EARLIEST to LATEST date.\n"
+    "3. On a line starting with `ANSWER:`, output ONLY the candidate name "
+    "or short label that answers the question (e.g. for 'who came first' "
+    "→ the candidate at the top of ORDERED; for 'most recent' → the "
+    "candidate at the bottom)."
 )
 
 
@@ -99,6 +131,7 @@ class AzureOpenAIReader:
         max_tokens: int = 200,
         temperature: float = 0.0,
         aggregation_cot: bool = False,
+        temporal_ordering_cot: bool = False,
     ) -> None:
         try:
             from openai import AzureOpenAI
@@ -118,6 +151,7 @@ class AzureOpenAIReader:
         self._max_tokens = max_tokens
         self._temperature = temperature
         self._aggregation_cot = aggregation_cot
+        self._temporal_ordering_cot = temporal_ordering_cot
 
     def read(
         self,
@@ -126,13 +160,22 @@ class AzureOpenAIReader:
     ) -> str:
         ordered = _chronological(retrieved_turns)
         context = "\n".join(_format_turn(t) for t in ordered)
-        is_agg = (
-            self._aggregation_cot
-            and classify_question(episode.question, episode.question_type) == "aggregation"
+        # v0.28: gate is question_type AND aggregation classifier (was
+        # aggregation classifier alone in v0.25 — leaked onto temporal).
+        is_agg = self._aggregation_cot and is_multi_session_aggregation(
+            episode.question, episode.question_type
+        )
+        is_ord = (
+            self._temporal_ordering_cot
+            and not is_agg
+            and is_temporal_ordering(episode.question, episode.question_type)
         )
         if is_agg:
             template = _AGGREGATION_USER_TEMPLATE
             max_tokens = max(self._max_tokens, 600)
+        elif is_ord:
+            template = _TEMPORAL_ORDERING_TEMPLATE
+            max_tokens = max(self._max_tokens, 400)
         else:
             template = _READER_USER_TEMPLATE
             max_tokens = self._max_tokens
@@ -157,7 +200,7 @@ class AzureOpenAIReader:
             # Treat as abstention so downstream judge handles it correctly.
             return "I don't know."
         raw = (rsp.choices[0].message.content or "").strip()
-        return _final_answer(raw) if is_agg else raw
+        return _final_answer(raw) if (is_agg or is_ord) else raw
 
 
 __all__ = ["AzureOpenAIReader"]

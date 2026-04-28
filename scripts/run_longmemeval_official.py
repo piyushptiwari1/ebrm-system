@@ -43,13 +43,12 @@ from benchmarks.datasets import (  # noqa: E402
 )
 from benchmarks.embedders.hash import HashEmbedder  # noqa: E402
 from benchmarks.entity import EntityReranker  # noqa: E402
-from benchmarks.fusion import LLMFusionReranker  # noqa: E402
-from benchmarks.router import classify_question, top_k_for  # noqa: E402
 from benchmarks.extraction import (  # noqa: E402
     ExtractedMemory,
     MemoryExtractor,
     augment_episode_with_memories,
 )
+from benchmarks.fusion import LLMFusionReranker  # noqa: E402
 from benchmarks.retrieval import (  # noqa: E402
     BM25Retriever,
     DenseRetriever,
@@ -58,6 +57,7 @@ from benchmarks.retrieval import (  # noqa: E402
     RRFRetriever,
     ScoredTurn,
 )
+from benchmarks.router import classify_question, top_k_for  # noqa: E402
 from benchmarks.temporal import TemporalReranker  # noqa: E402
 
 from ebrm_system import __version__ as ebrm_version  # noqa: E402
@@ -203,7 +203,21 @@ def main() -> int:
         action="store_true",
         help=(
             "For aggregation questions, use a list-then-count CoT reader "
-            "prompt that enumerates items before reporting the total (v0.25)."
+            "prompt that enumerates items before reporting the total. v0.28 "
+            "tightens the gate to question_type=='multi-session' (was "
+            "leaking onto temporal in v0.25)."
+        ),
+    )
+    p.add_argument(
+        "--temporal-ordering-cot",
+        action="store_true",
+        help=(
+            "v0.28: For temporal-reasoning questions that ask 'which "
+            "happened first / most recently / before / after', use a "
+            "structured CoT reader (CANDIDATES / ORDERED / ANSWER) that "
+            "extracts session_dates per candidate and orders them "
+            "deterministically — defeats the v0.24 reader bug where it "
+            "did correct date analysis then concluded the wrong order."
         ),
     )
     p.add_argument(
@@ -370,7 +384,10 @@ def main() -> int:
     if args.reader == "azure":
         from benchmarks.reader.azure_llm import AzureOpenAIReader
 
-        reader = AzureOpenAIReader(aggregation_cot=args.aggregation_cot)
+        reader = AzureOpenAIReader(
+            aggregation_cot=args.aggregation_cot,
+            temporal_ordering_cot=args.temporal_ordering_cot,
+        )
 
     judge = None
     if args.judge == "azure":
@@ -465,6 +482,7 @@ def main() -> int:
             "top_k": args.top_k,
             "per_type_top_k": args.per_type_top_k,
             "aggregation_cot": args.aggregation_cot,
+            "temporal_ordering_cot": args.temporal_ordering_cot,
             "rrf_k": args.rrf_k,
             "per_retriever_k": args.per_retriever_k,
             "rerank_candidate_k": args.rerank_candidate_k,
