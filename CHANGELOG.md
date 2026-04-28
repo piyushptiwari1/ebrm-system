@@ -6,6 +6,23 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [0.25.0] - 2026-04-28
 
+### Added — aggregation CoT reader (list-then-count) — opt-in, default OFF
+
+**Measured (--aggregation-cot ON): 75.2 % on LongMemEval oracle (n=500) — −2.2pt vs v0.24.**
+**Default (flag OFF): unchanged at 77.4 % vs v0.24.**
+
+Per-type with flag ON:
+- multi-session:   **67.7 % (+2.3pt — was 65.4)** ← intended target
+- temporal:        66.9 % (−6.0pt — bled via "how many days" aggregation cue)
+- knowledge-update: 75.6 % (−7.7pt — same root cause)
+- others: unchanged
+
+CoT lifted the targeted bucket but the aggregation classifier over-fires
+on date-arithmetic phrases ("how many days between…") that benefit
+more from the v0.22 plain reader. Shipping the path as opt-in so the
+default behavior matches v0.24 exactly. v0.26 will gate the CoT
+template to `question_type == "multi-session"` only.
+
 ### Added — aggregation CoT reader (list-then-count)
 
 Diagnosed v0.24: aggregation accuracy is 75.5 % (173/229) and the
