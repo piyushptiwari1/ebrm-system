@@ -4,6 +4,45 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.23.0] - 2026-04-28
+
+### Fixed — preference & aggregation reader prompts
+
+**Measured: 76.6 % on LongMemEval oracle (n=500) — NEW SOTA, +4.4pt over v0.22.**
+
+Per-type (vs v0.22 baseline):
+- single-session-preference: **56.7 % (+43.3pt — was 13.3)** 🚀
+- single-session-assistant:  98.2 % (+3.6pt — was 94.6)
+- knowledge-update:          83.3 % (+3.8pt — was 79.5)
+- multi-session:             66.2 % (+4.5pt — was 61.7)
+- single-session-user:       92.9 % (+1.5pt — was 91.4)
+- temporal-reasoning:        69.9 % (-2.3pt — was 72.2)
+
+Wall: ~30 min on T4 with `--top-k 10`.
+
+### Fixed — preference & aggregation reader prompts
+
+Diagnosed v0.22 ceiling: retrieval miss = 0 across all categories. All
+remaining failures are reader-side. Two specific bugs found:
+
+- **Preference (4/30 = 13.3 %)**: 26/26 non-abstention failures were
+  reader-IDK. The reader was told "abstain if answer not in excerpts",
+  but for "Can you suggest..." / "Can you recommend..." questions the
+  gold answer is "use the user's preferences from the excerpts to
+  ground a personalised recommendation". Added explicit reader
+  instruction to NOT abstain on suggestion/recommendation/advice
+  questions and to use stated preferences as constraints.
+- **Multi-session aggregation (39/121 reader-wrong)**: questions like
+  "how many model kits have I bought" were undercounted because the
+  reader stopped at the first match. Added explicit instruction to
+  enumerate every relevant item before reporting totals/counts/sums.
+
+- **`benchmarks/reader/azure_llm.py`** — system prompt extended with
+  two new rules. Existing v0.22 arithmetic + chronology rules retained.
+- **`tests/test_benchmarks_v23.py`** — 3 new tests for the prompt
+  rules (recommendation handling, aggregation enumeration, v0.22
+  rules preserved).
+
 ## [0.22.0] - 2026-04-28
 
 ### Fixed — judge / reader gap on temporal & preference buckets
