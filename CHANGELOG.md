@@ -4,6 +4,46 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.25.0] - 2026-04-28
+
+### Added — aggregation CoT reader (list-then-count) — opt-in, default OFF
+
+**Measured (--aggregation-cot ON): 75.2 % on LongMemEval oracle (n=500) — −2.2pt vs v0.24.**
+**Default (flag OFF): unchanged at 77.4 % vs v0.24.**
+
+Per-type with flag ON:
+- multi-session:   **67.7 % (+2.3pt — was 65.4)** ← intended target
+- temporal:        66.9 % (−6.0pt — bled via "how many days" aggregation cue)
+- knowledge-update: 75.6 % (−7.7pt — same root cause)
+- others: unchanged
+
+CoT lifted the targeted bucket but the aggregation classifier over-fires
+on date-arithmetic phrases ("how many days between…") that benefit
+more from the v0.22 plain reader. Shipping the path as opt-in so the
+default behavior matches v0.24 exactly. v0.26 will gate the CoT
+template to `question_type == "multi-session"` only.
+
+### Added — aggregation CoT reader (list-then-count)
+
+Diagnosed v0.24: aggregation accuracy is 75.5 % (173/229) and the
+reader miscounts even when all items are in context. Per-class
+analysis: aggregation 75.5 %, general 86.0 %, recommendation 68.8 %,
+temporal 64.9 %.
+
+- **`benchmarks/reader/azure_llm.py`** — new `_AGGREGATION_USER_TEMPLATE`
+  forces the reader to emit three labelled lines for aggregation
+  questions: `ITEMS:` (numbered list of every relevant item),
+  `TOTAL:` (the count or sum), and `ANSWER:` (the final concise
+  number). `_final_answer()` extracts the `ANSWER:` line so the
+  judge sees a clean answer and not the chain-of-thought.
+  Aggregation routing reuses `benchmarks.router.classify_question()`.
+  `max_tokens` is bumped from 200 → 600 on the aggregation path so the
+  numbered list is not truncated.
+- **`scripts/run_longmemeval_official.py`** — new flag
+  `--aggregation-cot`. Default OFF (backwards compatible with v0.24).
+- **`tests/test_benchmarks_v25.py`** — 6 new tests for the template
+  shape and `_final_answer()` extraction.
+
 ## [0.24.0] - 2026-04-28
 
 ### Added — per-type top_k routing for aggregation vs chronology
