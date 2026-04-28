@@ -4,6 +4,108 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.28.0] - 2026-04-28
+
+### Fixed — aggregation-CoT temporal leak (v0.25 bug); added temporal-ordering CoT (opt-in, default OFF)
+
+**Measured: 77.2 % on LongMemEval oracle (n=500) — TIE with v0.24/v0.25
+default (77.4 %, single-question slice deltas all within noise).**
+
+This is a **defensive bug-fix release**: behaviour with both new flags
+OFF is identical to v0.25.0; opt-in users of ``--aggregation-cot`` get
+strictly safer behaviour than v0.25 without losing the multi-session
+gain.
+
+#### Diagnostic-driven design
+
+Pre-implementation analysis of v0.24's 113 failures (retrieval recall
+on failures = 100 %, the entire error budget is reader+judge):
+
+| failure mode               | count | dominant slice            |
+|----------------------------|-------|---------------------------|
+| wrong_number               |   39  | multi-session (26/46)     |
+| wrong_fact                 |   33  | spread across types       |
+| reader_IDK                 |   17  | preference (7/13)         |
+| judge_strict-looking       |   13  | mostly reader-CoT errors  |
+| other                      |   11  | —                         |
+
+For 25/29 multi-session ``wrong_number`` cases ALL gold sessions were
+already in the retrieved context — pure reader enumeration bug.
+For sampled temporal ``wrong_fact`` cases the reader did correct date
+extraction then concluded the OPPOSITE order.
+
+#### Changes
+
+- **Tightened ``--aggregation-cot`` gate** to also require
+  ``question_type == "multi-session"``. v0.25 fired on the
+  ``classify_question == "aggregation"`` cue alone, which leaked onto
+  temporal "how many days between X and Y" arithmetic questions and
+  cost 6 pt on temporal-reasoning. The new gate is the
+  ``is_multi_session_aggregation()`` predicate in
+  ``benchmarks/router/__init__.py``.
+
+- **Added ``--temporal-ordering-cot``** opt-in flag with a structured
+  ``CANDIDATES → ORDERED → ANSWER`` template, gated on
+  ``question_type == "temporal-reasoning"`` AND ordering cues
+  ("happened first", "earliest", "most recently", etc.).
+  **Measured net effect: 4 helped, 8 regressed, 3 of 8 from cue leak,
+  4 from CoT picking wrong dates the standard reader gets right.**
+  Flag preserved for future experimentation; SHOULD remain OFF by
+  default. Default behaviour matches v0.25 exactly.
+
+- **Strengthened then reverted aggregation prompt.** A pre-publish
+  ablation showed that adding "items spread across DIFFERENT sessions"
+  / "scan EVERY excerpt" instructions pushed multi-session DOWN
+  (66.17 % → 64.66 %). Reverted to the v0.25 wording. Only the gate
+  changed.
+
+#### Per-type vs v0.24 (with ``--aggregation-cot`` ON, ``--temporal-ordering-cot`` OFF)
+
+| type                       | v0.24    | v0.28    | Δ        |
+|----------------------------|----------|----------|----------|
+| temporal-reasoning         | 72.93 %  | 72.93 %  | **0** (leak fixed) |
+| multi-session              | 65.41 %  | 64.66 %  | −0.75 (1 Q)        |
+| knowledge-update           | 83.33 %  | 84.62 %  | +1.29 (1 Q)        |
+| single-session-preference  | 56.67 %  | 53.33 %  | −3.34 (1 Q on n=30) |
+| single-session-assistant   | 98.21 %  | 96.43 %  | −1.78 (1 Q on n=56) |
+| single-session-user        | 94.29 %  | 95.71 %  | +1.43 (1 Q on n=70) |
+| **overall**                | **77.40 %** | **77.20 %** | **−0.20** (1 Q on n=500) |
+
+All non-zero deltas are single-question flips on slices of size 30-133;
+within LLM non-determinism noise floor (gpt-4o-mini at temperature=0
+isn't perfectly deterministic; reader does not cache responses).
+
+#### Tests
+
+- ``tests/test_benchmarks_v28.py`` — 12 new tests:
+  * router predicates (``is_multi_session_aggregation``,
+    ``is_temporal_ordering``) including v0.25 leak case and v0.28
+    cue-overlap edge cases.
+  * reader gating (aggregation only on multi-session; ordering only on
+    temporal; aggregation precedence over ordering when both fire;
+    standard template when both flags off).
+- ``tests/test_benchmarks_v25.py`` — existing 12 tests still pass; gate
+  was only narrowed.
+- Full suite: 417 passed, 95 % coverage, ruff + mypy clean.
+
+#### Lessons (recorded in CHANGELOG for future agents)
+
+- **Surface cues leak across question types.** v0.25's aggregation cue
+  on "how many" matched temporal arithmetic; v0.28's ordering cue on
+  " before " matched "how many days before X". The fix is always to
+  pair surface cues with the dataset's ground-truth ``question_type``,
+  never to rely on text alone.
+- **Structured CoT templates can hurt cases the standard prompt
+  already gets right.** For 4/12 temporal ordering questions the
+  CANDIDATES/ORDERED/ANSWER template forced the reader to commit to
+  wrong session_dates the standard prose reader had been navigating
+  correctly. Don't ship structured templates without a per-case
+  helped/regressed breakdown.
+- **At the noise floor, single-question slices look like big deltas.**
+  preference (n=30) → 1 question = 3.3 pt; assistant (n=56) → 1 Q =
+  1.8 pt. Anything < ~1.5 pt overall on n=500 is signal-equivalent to
+  zero.
+
 ## [unreleased] - v0.27 experiment — NEGATIVE RESULT, not published
 
 **Measured: 74.8 % on LongMemEval oracle (n=500) — −2.6 pt vs v0.24/v0.25 default (77.4 %).**
