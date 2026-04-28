@@ -5,18 +5,27 @@ from __future__ import annotations
 import os
 
 from benchmarks.datasets.longmemeval_official import OfficialEpisode, OfficialTurn
+from benchmarks.temporal.dates import parse_lme_date
 
 _READER_SYSTEM = (
     "You are a precise long-term memory assistant. Use ONLY the provided "
     "chat history excerpts to answer the user's question. If the answer "
     "is not present in the excerpts, reply exactly: I don't know. "
     "Be concise (one or two short sentences). Preserve dates, numbers and "
-    "names exactly as they appear in the history."
+    "names exactly as they appear in the history.\n"
+    "If the question asks for a count, duration, or how-many-days/weeks/"
+    "months, FIRST identify the two relevant dates from the excerpts (or the "
+    "excerpt date and 'today's date' below), then compute the difference "
+    "step by step, then state the final number. Do not say 'I don't know' "
+    "if the dates are visible in the excerpts \u2014 do the arithmetic.\n"
+    "If the question asks 'which happened first / most recently / before / "
+    "after', compare the session dates of the relevant excerpts directly "
+    "rather than relying on phrases like 'three weeks ago'."
 )
 
 _READER_USER_TEMPLATE = (
     "Today's date is {today}.\n\n"
-    "Relevant chat history excerpts (most relevant first):\n"
+    "Relevant chat history excerpts (sorted oldest \u2192 newest):\n"
     "{context}\n\n"
     "Question: {question}\n"
     "Answer:"
@@ -25,6 +34,18 @@ _READER_USER_TEMPLATE = (
 
 def _format_turn(turn: OfficialTurn) -> str:
     return f"[{turn.session_date}] [{turn.role}] {turn.content.strip()}"
+
+
+def _chronological(turns: list[OfficialTurn]) -> list[OfficialTurn]:
+    """Sort turns by session_date ascending; unparseable dates go last."""
+
+    def key(t: OfficialTurn) -> tuple[int, float]:
+        dt = parse_lme_date(t.session_date)
+        if dt is None:
+            return (1, 0.0)
+        return (0, dt.timestamp())
+
+    return sorted(turns, key=key)
 
 
 class AzureOpenAIReader:
@@ -63,7 +84,8 @@ class AzureOpenAIReader:
         episode: OfficialEpisode,
         retrieved_turns: list[OfficialTurn],
     ) -> str:
-        context = "\n".join(_format_turn(t) for t in retrieved_turns)
+        ordered = _chronological(retrieved_turns)
+        context = "\n".join(_format_turn(t) for t in ordered)
         try:
             rsp = self._client.chat.completions.create(
                 model=self._deployment,

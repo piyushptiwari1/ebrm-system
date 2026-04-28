@@ -4,6 +4,52 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.22.0] - 2026-04-28
+
+### Fixed — judge / reader gap on temporal & preference buckets
+
+**Measured: 72.2 % on LongMemEval oracle (n=500) — NEW SOTA, +15.6pt over v0.21.**
+
+Per-type (vs v0.21 baseline):
+- temporal-reasoning:        72.2 % (+27.1pt — was 45.1)
+- multi-session:             61.7 % (+18.8pt — was 42.9)
+- knowledge-update:          79.5 % (+14.1pt — was 65.4)
+- single-session-preference: 13.3 % (+10.0pt — was 3.3, judge bottleneck partially fixed)
+- single-session-user:       91.4 % (+5.7pt)
+- single-session-assistant:  94.6 % (-1.8pt)
+
+Wall: ~29 min on T4. Caches: extract/embed/fusion warm, judge/reader cold.
+
+### Fixed — judge / reader gap on temporal & preference buckets
+
+Diagnosed the post-v0.21 ceiling: temporal-reasoning at 45.1 % was not a
+retrieval issue (recall = 99.2 %) but a reader + judge problem. Of 72
+temporal failures: 31 % were the judge marking correct-but-verbose
+answers wrong (e.g. gold=`"bike"` vs pred=`"You took your bike in for
+repairs in mid-February"`), 14 % were the reader giving up on date
+arithmetic ("4", "27 days", "19 days ago"), 56 % were genuine
+chronology errors.
+
+- **`benchmarks/judges/azure_llm.py`** — replaced the strict
+  "semantically equivalent" prompt with the official LongMemEval
+  rubric: a prediction is correct iff the gold answer's key facts are
+  present in the prediction; verbosity, restated context, and extra
+  justification are explicitly NOT penalised; multiple-acceptable-
+  answers (e.g. `"30 days. 31 days is also acceptable"`) match if any
+  alternative is satisfied. Cache key now includes
+  `_JUDGE_PROMPT_VERSION` so old strict verdicts are not reused.
+- **`benchmarks/reader/azure_llm.py`** — added an explicit
+  arithmetic-and-ordering instruction to the system prompt, telling
+  the reader to identify dates in excerpts and compute differences
+  step-by-step rather than abstaining. Retrieved excerpts are now
+  sorted **chronologically (oldest → newest)** before being shown
+  to the reader; previously they were ordered by retrieval score,
+  which confused chronology questions.
+- **`tests/test_benchmarks_v22.py`** — 5 new tests for the
+  chronological sort (parses `"YYYY/MM/DD (Day) HH:MM"` and date-only
+  formats, pushes unparseable dates to the end, handles empty input)
+  and the bumped judge prompt version tag.
+
 ## [0.21.0] - 2026-04-28
 
 ### Added — LLM-based multi-signal fusion reranker (Phase 5 of 90%+ plan)
