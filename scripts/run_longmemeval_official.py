@@ -44,6 +44,7 @@ from benchmarks.datasets import (  # noqa: E402
 from benchmarks.embedders.hash import HashEmbedder  # noqa: E402
 from benchmarks.entity import EntityReranker  # noqa: E402
 from benchmarks.fusion import LLMFusionReranker  # noqa: E402
+from benchmarks.router import classify_question, top_k_for  # noqa: E402
 from benchmarks.extraction import (  # noqa: E402
     ExtractedMemory,
     MemoryExtractor,
@@ -197,6 +198,15 @@ def main() -> int:
         help="Number of candidates fed to the cross-encoder reranker.",
     )
     p.add_argument("--top-k", type=int, default=5)
+    p.add_argument(
+        "--per-type-top-k",
+        action="store_true",
+        help=(
+            "Route top_k by question class: aggregation=max(top_k,20), "
+            "temporal=min(top_k,5), other=top_k. Improves multi-session "
+            "counting without hurting temporal chronology (v0.24)."
+        ),
+    )
     p.add_argument(
         "--max-episodes",
         type=int,
@@ -370,7 +380,14 @@ def main() -> int:
             extracted_counts.append(len(memories))
             if memories:
                 retrieval_episode = augment_episode_with_memories(ep, memories)
-        retrieved_scored: list[ScoredTurn] = retriever.retrieve(retrieval_episode, top_k=args.top_k)
+        if args.per_type_top_k:
+            tag = classify_question(ep.question, ep.question_type)
+            this_top_k = top_k_for(tag, default=args.top_k)
+        else:
+            this_top_k = args.top_k
+        retrieved_scored: list[ScoredTurn] = retriever.retrieve(
+            retrieval_episode, top_k=this_top_k
+        )
         retrieved = [st.turn for st in retrieved_scored]
         if reader is not None:
             pred = reader.read(ep, retrieved)
@@ -438,6 +455,7 @@ def main() -> int:
             "reader": getattr(reader, "name", args.reader),
             "judge": getattr(judge, "name", args.judge),
             "top_k": args.top_k,
+            "per_type_top_k": args.per_type_top_k,
             "rrf_k": args.rrf_k,
             "per_retriever_k": args.per_retriever_k,
             "rerank_candidate_k": args.rerank_candidate_k,

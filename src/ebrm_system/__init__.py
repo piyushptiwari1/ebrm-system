@@ -14,6 +14,6 @@ For the original EBRM v2 reference implementation (paper code), see:
     https://github.com/piyushptiwari1/ebrm
 """
 
-__version__ = "0.23.0"
+__version__ = "0.24.0"
 __author__ = "Piyush Tiwari"
 __license__ = "Apache-2.0"
