@@ -410,9 +410,7 @@ def main() -> int:
             this_top_k = top_k_for(tag, default=args.top_k)
         else:
             this_top_k = args.top_k
-        retrieved_scored: list[ScoredTurn] = retriever.retrieve(
-            retrieval_episode, top_k=this_top_k
-        )
+        retrieved_scored: list[ScoredTurn] = retriever.retrieve(retrieval_episode, top_k=this_top_k)
         retrieved = [st.turn for st in retrieved_scored]
         if reader is not None:
             pred = reader.read(ep, retrieved)

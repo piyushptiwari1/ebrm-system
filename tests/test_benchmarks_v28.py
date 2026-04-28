@@ -42,9 +42,7 @@ class TestIsMultiSessionAggregation:
             "temporal-reasoning",
         )
         assert (
-            classify_question(
-                "How many days between A and B?", "temporal-reasoning"
-            )
+            classify_question("How many days between A and B?", "temporal-reasoning")
             == "aggregation"
         )
 
@@ -60,9 +58,7 @@ class TestIsMultiSessionAggregation:
             "single-session-assistant",
             "single-session-preference",
         ):
-            assert not is_multi_session_aggregation(
-                "How many books have I bought this year?", qt
-            )
+            assert not is_multi_session_aggregation("How many books have I bought this year?", qt)
 
 
 class TestIsTemporalOrdering:
@@ -81,9 +77,7 @@ class TestIsTemporalOrdering:
         assert is_temporal_ordering(q, "temporal-reasoning")
 
     def test_does_not_fire_on_non_temporal_type(self):
-        assert not is_temporal_ordering(
-            "Who did I meet first, Mark or Tom?", "multi-session"
-        )
+        assert not is_temporal_ordering("Who did I meet first, Mark or Tom?", "multi-session")
 
     def test_does_not_fire_without_ordering_cue(self):
         assert not is_temporal_ordering(
@@ -159,9 +153,7 @@ def _stub_reader(monkeypatch, response: str):
 
 
 def test_aggregation_cot_fires_only_on_multi_session(monkeypatch, reader_env):
-    captured = _stub_reader(
-        monkeypatch, "ITEMS:\n1. a\n2. b\nTOTAL: 2\nANSWER: 2"
-    )
+    captured = _stub_reader(monkeypatch, "ITEMS:\n1. a\n2. b\nTOTAL: 2\nANSWER: 2")
     from benchmarks.reader.azure_llm import AzureOpenAIReader
 
     r = AzureOpenAIReader(aggregation_cot=True)
@@ -187,28 +179,21 @@ def test_aggregation_cot_does_not_fire_on_temporal(monkeypatch, reader_env):
 def test_temporal_ordering_cot_fires_on_ordering_temporal(monkeypatch, reader_env):
     captured = _stub_reader(
         monkeypatch,
-        "CANDIDATES:\n- A: 2023/01/05\n- B: 2023/02/10\n"
-        "ORDERED:\n- A\n- B\nANSWER: A",
+        "CANDIDATES:\n- A: 2023/01/05\n- B: 2023/02/10\nORDERED:\n- A\n- B\nANSWER: A",
     )
     from benchmarks.reader.azure_llm import AzureOpenAIReader
 
     r = AzureOpenAIReader(temporal_ordering_cot=True)
-    ep = _episode(
-        "Which event happened first, A or B?", "temporal-reasoning"
-    )
+    ep = _episode("Which event happened first, A or B?", "temporal-reasoning")
     out = r.read(ep, list(ep.turns))
     assert "CANDIDATES:" in (captured["user"] or "")
     assert "ORDERED:" in (captured["user"] or "")
     assert out == "A"
 
 
-def test_temporal_ordering_cot_does_not_fire_when_aggregation_wins(
-    monkeypatch, reader_env
-):
+def test_temporal_ordering_cot_does_not_fire_when_aggregation_wins(monkeypatch, reader_env):
     """Aggregation gate must take precedence over ordering when both fire."""
-    captured = _stub_reader(
-        monkeypatch, "ITEMS:\n1. x\nTOTAL: 1\nANSWER: 1"
-    )
+    captured = _stub_reader(monkeypatch, "ITEMS:\n1. x\nTOTAL: 1\nANSWER: 1")
     from benchmarks.reader.azure_llm import AzureOpenAIReader
 
     r = AzureOpenAIReader(aggregation_cot=True, temporal_ordering_cot=True)
@@ -242,9 +227,7 @@ def test_temporal_ordering_does_not_fire_on_non_temporal(monkeypatch, reader_env
     from benchmarks.reader.azure_llm import AzureOpenAIReader
 
     r = AzureOpenAIReader(temporal_ordering_cot=True)
-    ep = _episode(
-        "Which show did I watch first, Crown or GoT?", "single-session-user"
-    )
+    ep = _episode("Which show did I watch first, Crown or GoT?", "single-session-user")
     out = r.read(ep, list(ep.turns))
     assert "CANDIDATES:" not in (captured["user"] or "")
     assert out == "Plain answer."

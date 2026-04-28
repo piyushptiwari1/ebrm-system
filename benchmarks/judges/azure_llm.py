@@ -190,9 +190,7 @@ class AzureOpenAIJudge:
         if self._cache_dir is None:
             return None
         path = self._cache_dir / (
-            self._cache_key(
-                self._deployment, _JUDGE_PROMPT_VERSION, qtype, question, gold, pred
-            )
+            self._cache_key(self._deployment, _JUDGE_PROMPT_VERSION, qtype, question, gold, pred)
             + ".txt"
         )
         if not path.exists():
@@ -206,9 +204,7 @@ class AzureOpenAIJudge:
         if self._cache_dir is None:
             return
         path = self._cache_dir / (
-            self._cache_key(
-                self._deployment, _JUDGE_PROMPT_VERSION, qtype, question, gold, pred
-            )
+            self._cache_key(self._deployment, _JUDGE_PROMPT_VERSION, qtype, question, gold, pred)
             + ".txt"
         )
         path.write_text(verdict.raw, encoding="utf-8")
