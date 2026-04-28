@@ -41,17 +41,32 @@ def is_abstention_response(text: str) -> bool:
     return any(p.search(text) for p in _ABSTAIN_PATTERNS)
 
 
-# Type-specific judge prompts. The official paper Section 5 uses slightly
-# different rubrics per question type. We map them to a single unified prompt
-# that is strict but type-aware — this matches what the official
-# ``evaluate_qa.py`` script does for ``gpt-4o`` judging.
+# Type-specific judge prompts. Faithfully reproduces the official
+# ``evaluate_qa.py`` rubric: a prediction is CORRECT when the gold answer's
+# information is *present* in the prediction (the prediction may be more
+# verbose, restate context, or add justification). It is INCORRECT only
+# when the gold information is missing, contradicted, or replaced.
+#
+# Versioned via ``_JUDGE_PROMPT_VERSION`` so cached verdicts from earlier
+# (over-strict) prompts are not reused.
+_JUDGE_PROMPT_VERSION = "v2-lenient"
+
 _JUDGE_SYSTEM = (
-    "You are a strict grader for a long-term memory chatbot benchmark. "
-    "Given a question, the gold answer and the predicted answer, output "
-    "exactly the single character '1' if the predicted answer is correct "
-    "(semantically equivalent to the gold answer, including all required "
-    "facts, dates, names and numbers), otherwise output exactly '0'. "
-    "Do not output anything else."
+    "You are a grader for a long-term memory chatbot benchmark, replicating "
+    "the LongMemEval evaluator. Given a question, the gold answer and a "
+    "predicted answer, decide if the prediction conveys the gold answer.\n"
+    "Mark the prediction CORRECT (output '1') if ALL of the following hold:\n"
+    "  - the gold answer's key facts (entities, dates, numbers, names) are "
+    "present in the prediction;\n"
+    "  - the prediction does not contradict the gold answer;\n"
+    "  - if the gold answer offers acceptable alternatives (e.g. '30 days. "
+    "31 days is also acceptable'), the prediction matching ANY of them counts.\n"
+    "Extra context, restated dates, or extra justification in the prediction "
+    "are FINE — do not penalise verbosity. The prediction does not need to "
+    "match the gold answer word-for-word.\n"
+    "For numeric answers, accept off-by-one differences when the gold answer "
+    "explicitly lists alternatives. Otherwise the number must match.\n"
+    "Output exactly '1' (correct) or '0' (incorrect). No other text."
 )
 
 _JUDGE_USER_TEMPLATE = (
@@ -175,7 +190,10 @@ class AzureOpenAIJudge:
         if self._cache_dir is None:
             return None
         path = self._cache_dir / (
-            self._cache_key(self._deployment, qtype, question, gold, pred) + ".txt"
+            self._cache_key(
+                self._deployment, _JUDGE_PROMPT_VERSION, qtype, question, gold, pred
+            )
+            + ".txt"
         )
         if not path.exists():
             return None
@@ -188,7 +206,10 @@ class AzureOpenAIJudge:
         if self._cache_dir is None:
             return
         path = self._cache_dir / (
-            self._cache_key(self._deployment, qtype, question, gold, pred) + ".txt"
+            self._cache_key(
+                self._deployment, _JUDGE_PROMPT_VERSION, qtype, question, gold, pred
+            )
+            + ".txt"
         )
         path.write_text(verdict.raw, encoding="utf-8")
 
