@@ -8,6 +8,20 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Fixed — judge / reader gap on temporal & preference buckets
 
+**Measured: 72.2 % on LongMemEval oracle (n=500) — NEW SOTA, +15.6pt over v0.21.**
+
+Per-type (vs v0.21 baseline):
+- temporal-reasoning:        72.2 % (+27.1pt — was 45.1)
+- multi-session:             61.7 % (+18.8pt — was 42.9)
+- knowledge-update:          79.5 % (+14.1pt — was 65.4)
+- single-session-preference: 13.3 % (+10.0pt — was 3.3, judge bottleneck partially fixed)
+- single-session-user:       91.4 % (+5.7pt)
+- single-session-assistant:  94.6 % (-1.8pt)
+
+Wall: ~29 min on T4. Caches: extract/embed/fusion warm, judge/reader cold.
+
+### Fixed — judge / reader gap on temporal & preference buckets
+
 Diagnosed the post-v0.21 ceiling: temporal-reasoning at 45.1 % was not a
 retrieval issue (recall = 99.2 %) but a reader + judge problem. Of 72
 temporal failures: 31 % were the judge marking correct-but-verbose
