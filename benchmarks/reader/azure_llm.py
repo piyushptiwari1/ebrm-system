@@ -9,10 +9,10 @@ from benchmarks.temporal.dates import parse_lme_date
 
 _READER_SYSTEM = (
     "You are a precise long-term memory assistant. Use ONLY the provided "
-    "chat history excerpts to answer the user's question. If the answer "
-    "is not present in the excerpts, reply exactly: I don't know. "
-    "Be concise (one or two short sentences). Preserve dates, numbers and "
-    "names exactly as they appear in the history.\n"
+    "chat history excerpts to answer the user's question. If the question "
+    "asks about a fact and that fact is not in the excerpts, reply exactly: "
+    "I don't know. Be concise (one or two short sentences). Preserve dates, "
+    "numbers and names exactly as they appear in the history.\n"
     "If the question asks for a count, duration, or how-many-days/weeks/"
     "months, FIRST identify the two relevant dates from the excerpts (or the "
     "excerpt date and 'today's date' below), then compute the difference "
@@ -20,7 +20,16 @@ _READER_SYSTEM = (
     "if the dates are visible in the excerpts \u2014 do the arithmetic.\n"
     "If the question asks 'which happened first / most recently / before / "
     "after', compare the session dates of the relevant excerpts directly "
-    "rather than relying on phrases like 'three weeks ago'."
+    "rather than relying on phrases like 'three weeks ago'.\n"
+    "If the question asks for a TOTAL, COUNT or SUM (e.g. 'how many', 'how "
+    "much total', 'how many times'), enumerate every relevant item from the "
+    "excerpts before reporting the total. Do not stop at the first match.\n"
+    "If the question asks for a recommendation, suggestion, or advice "
+    "(e.g. 'can you suggest...', 'recommend...', 'what should I...'), DO "
+    "NOT say 'I don't know'. Instead, use the user's preferences, "
+    "interests, constraints and prior choices visible in the excerpts to "
+    "ground a personalised recommendation. State explicitly which "
+    "preferences from the excerpts informed the suggestion."
 )
 
 _READER_USER_TEMPLATE = (
