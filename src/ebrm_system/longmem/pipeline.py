@@ -99,7 +99,14 @@ class LongMemPipeline:
     reader: _ReaderLike
     top_k: int = 10
     per_type_top_k: bool = True
+    # v0.30 (experimental, opt-in): structured Mem0-style memory layer.
+    # When both are set, ``add_session`` runs the extractor and applies
+    # ADD / UPDATE / DELETE actions to ``memory_store``. Default ``None``
+    # preserves v0.29 session-additive behaviour exactly.
+    memory_store: Any | None = None
+    memory_extractor: Any | None = None
     _sessions: list[LongMemSession] = field(default_factory=list, init=False)
+    _last_memory_actions: list[Any] = field(default_factory=list, init=False)
 
     # ------------------------------------------------------------------
     # Construction helpers
@@ -362,8 +369,22 @@ class LongMemPipeline:
         date: str,
         turns: Iterable[Mapping[str, str]],
     ) -> None:
-        """Append a session of chat turns to the haystack."""
-        self._sessions.append(LongMemSession.from_dicts(session_id, date, turns))
+        """Append a session of chat turns to the haystack.
+
+        If both ``memory_store`` and ``memory_extractor`` are configured
+        (v0.30 opt-in), the extractor is also invoked and resulting
+        ADD / UPDATE / DELETE actions are applied to the store. The
+        actions are recorded on ``_last_memory_actions`` for inspection.
+        Default behaviour (no store / extractor) is unchanged.
+        """
+        session = LongMemSession.from_dicts(session_id, date, turns)
+        self._sessions.append(session)
+        if self.memory_store is not None and self.memory_extractor is not None:
+            from ebrm_system.longmem.memory_ops import apply_actions
+
+            existing = self.memory_store.list()
+            actions = self.memory_extractor.extract(session, existing)
+            self._last_memory_actions = list(apply_actions(self.memory_store, actions))
 
     def add_sessions(self, sessions: Sequence[LongMemSession]) -> None:
         """Append multiple pre-built :class:`LongMemSession` objects."""
