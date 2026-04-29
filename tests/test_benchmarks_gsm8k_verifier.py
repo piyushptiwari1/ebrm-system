@@ -112,7 +112,9 @@ def test_bench_uses_scorer_to_pick_candidate() -> None:
                         index=i, candidate=c, energy=-1.0, all_energies=(0.0,) * len(candidates)
                     )
             return EBRMSelection(
-                index=0, candidate=candidates[0], energy=0.0,
+                index=0,
+                candidate=candidates[0],
+                energy=0.0,
                 all_energies=(0.0,) * len(candidates),
             )
 
@@ -130,9 +132,7 @@ def test_bench_result_summary_and_accuracies() -> None:
         return ["The answer is 5."] * 3
 
     bench = GSM8KVerifierBench(generator=gen, scorer=None, n_candidates=3)
-    result = bench.run(
-        examples=[_Ex("a", "Q?", 5.0), _Ex("b", "Q?", 6.0), _Ex("c", "Q?", 5.0)]
-    )
+    result = bench.run(examples=[_Ex("a", "Q?", 5.0), _Ex("b", "Q?", 6.0), _Ex("c", "Q?", 5.0)])
     assert result.total == 3
     assert result.single_acc == pytest.approx(2 / 3)
     assert result.majority_acc == pytest.approx(2 / 3)
@@ -145,7 +145,5 @@ def test_bench_limit_truncates_iterable() -> None:
         return ["The answer is 1."]
 
     bench = GSM8KVerifierBench(generator=gen, scorer=None, n_candidates=1)
-    result = bench.run(
-        examples=[_Ex(f"x{i}", "Q?", 1.0) for i in range(10)], limit=3
-    )
+    result = bench.run(examples=[_Ex(f"x{i}", "Q?", 1.0) for i in range(10)], limit=3)
     assert result.total == 3

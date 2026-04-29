@@ -81,9 +81,7 @@ class GatedProjector(nn.Module):
 class CrossAttentionEnergy(nn.Module):
     """Multi-component energy: cross-attn + local + global L2 + bilinear."""
 
-    def __init__(
-        self, latent_dim: int, num_heads: int = 8, hidden_dim: int = 384
-    ) -> None:
+    def __init__(self, latent_dim: int, num_heads: int = 8, hidden_dim: int = 384) -> None:
         super().__init__()
         self.cross_attn = nn.MultiheadAttention(
             embed_dim=latent_dim, num_heads=num_heads, batch_first=True, dropout=0.1
@@ -112,9 +110,7 @@ class CrossAttentionEnergy(nn.Module):
         self.lambda_global = nn.Parameter(torch.tensor(0.3))
         self.lambda_bilinear = nn.Parameter(torch.tensor(0.5))
 
-    def forward(
-        self, solution_state: torch.Tensor, problem_state: torch.Tensor
-    ) -> torch.Tensor:
+    def forward(self, solution_state: torch.Tensor, problem_state: torch.Tensor) -> torch.Tensor:
         sol_seq = solution_state.unsqueeze(1)
         prob_seq = problem_state.unsqueeze(1)
         cross_out, _ = self.cross_attn(sol_seq, prob_seq, prob_seq)

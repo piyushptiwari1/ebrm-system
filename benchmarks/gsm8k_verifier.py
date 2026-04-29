@@ -115,8 +115,7 @@ def make_chat_completions_generator(
         from openai import OpenAI
     except ImportError as exc:  # pragma: no cover
         raise ImportError(
-            "make_chat_completions_generator requires openai. "
-            "Install with: pip install openai"
+            "make_chat_completions_generator requires openai. Install with: pip install openai"
         ) from exc
 
     client = OpenAI(api_key=api_key, base_url=base_url)

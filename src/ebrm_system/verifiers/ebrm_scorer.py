@@ -91,9 +91,7 @@ class EBRMScorer:
         self.energy_head = energy_head
         self.max_length = max_length
         self.device = (
-            torch.device(device)
-            if device is not None
-            else next(iter(pooler.parameters())).device  # type: ignore[attr-defined]
+            torch.device(device) if device is not None else next(iter(pooler.parameters())).device  # type: ignore[attr-defined]
         )
         # Switch to eval mode so dropout/spectral-norm power-iters are stable.
         for module in (self.encoder, self.pooler, self.projector, self.energy_head):
@@ -137,7 +135,9 @@ class EBRMScorer:
         )
 
         ckpt_path = hf_hub_download(
-            repo_id=repo_id, filename=checkpoint_file, cache_dir=str(cache_dir) if cache_dir else None
+            repo_id=repo_id,
+            filename=checkpoint_file,
+            cache_dir=str(cache_dir) if cache_dir else None,
         )
 
         quant_config = None
@@ -282,11 +282,7 @@ def _load_subset(module: object, full_state: dict[str, object], *, prefix: str) 
     drift between this vendored copy and the trained checkpoint) raises
     immediately rather than silently scoring on random weights.
     """
-    sub = {
-        k[len(prefix) :]: v
-        for k, v in full_state.items()
-        if k.startswith(prefix)
-    }
+    sub = {k[len(prefix) :]: v for k, v in full_state.items() if k.startswith(prefix)}
     if not sub:
         raise RuntimeError(
             f"No keys with prefix '{prefix}' found in checkpoint. "

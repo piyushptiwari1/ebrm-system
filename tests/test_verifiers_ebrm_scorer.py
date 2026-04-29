@@ -154,9 +154,7 @@ def _build_scorer() -> EBRMScorer:
 
 def test_score_batch_returns_one_finite_per_candidate() -> None:
     scorer = _build_scorer()
-    energies = scorer.score_batch(
-        question="solve x", candidates=["x = 1", "x = 2", "x = 3"]
-    )
+    energies = scorer.score_batch(question="solve x", candidates=["x = 1", "x = 2", "x = 3"])
     assert len(energies) == 3
     assert all(isinstance(e, float) for e in energies)
     assert all(e == e and abs(e) < 1e6 for e in energies)  # finite (no NaN/inf)

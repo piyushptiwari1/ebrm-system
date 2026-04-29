@@ -155,9 +155,7 @@ class LLMMemoryExtractor:
         session: LongMemSession,
         existing: list[MemoryRecord],
     ) -> list[MemoryAction]:
-        memories_block = (
-            "\n".join(f"- [{r.memory_id}] {r.content}" for r in existing) or "(none)"
-        )
+        memories_block = "\n".join(f"- [{r.memory_id}] {r.content}" for r in existing) or "(none)"
         turns_block = "\n".join(f"{t.role}: {t.content}" for t in session.turns)
         prompt = (
             self.prompt_template.replace("{memories}", memories_block)
@@ -200,9 +198,7 @@ def _parse_actions(raw: str) -> list[MemoryAction]:
                     op=op,
                     content=str(item.get("content", "")),
                     memory_id=item.get("memory_id"),
-                    metadata={
-                        str(k): str(v) for k, v in (item.get("metadata") or {}).items()
-                    },
+                    metadata={str(k): str(v) for k, v in (item.get("metadata") or {}).items()},
                 )
             )
         except ValueError:
