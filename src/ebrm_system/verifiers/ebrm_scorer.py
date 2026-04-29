@@ -228,7 +228,7 @@ class EBRMScorer:
             )
             hidden = outputs.hidden_states[-1].float()
             pooled = self.pooler(hidden, attention_mask)  # type: ignore[operator]
-            latent = self.projector(pooled)  # type: ignore[operator]
+            latent: torch.Tensor = self.projector(pooled)  # type: ignore[operator]
         return latent
 
     def score(self, question: str, candidate: str) -> float:
@@ -255,7 +255,8 @@ class EBRMScorer:
         problem_expanded = problem_state.expand(candidate_states.shape[0], -1)
         with torch.no_grad():
             energies = self.energy_head(candidate_states, problem_expanded)  # type: ignore[operator]
-        return energies.detach().cpu().tolist()
+        out: list[float] = energies.detach().cpu().tolist()
+        return out
 
     def select_best(self, question: str, candidates: list[str]) -> EBRMSelection:
         """Return the lowest-energy candidate."""
@@ -274,7 +275,7 @@ class EBRMScorer:
 # --------------------------------------------------------------- utilities
 
 
-def _load_subset(module: object, full_state: dict, *, prefix: str) -> None:
+def _load_subset(module: object, full_state: dict[str, object], *, prefix: str) -> None:
     """Load only the keys under ``prefix`` from ``full_state`` into ``module``.
 
     Strips the prefix and uses ``strict=True`` so a key mismatch (i.e. arch

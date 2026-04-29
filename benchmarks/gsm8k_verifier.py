@@ -180,7 +180,7 @@ class GSM8KVerifierBench:
     """Three-way accuracy comparison over GSM8K test."""
 
     generator: CandidateGenerator
-    scorer: "EBRMScorer | None" = None
+    scorer: EBRMScorer | None = None
     n_candidates: int = 8
     tolerance: float = 1e-3
 

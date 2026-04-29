@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import pytest
-
 from benchmarks.gsm8k_verifier import (
     GSM8KVerifierBench,
     _majority_vote,

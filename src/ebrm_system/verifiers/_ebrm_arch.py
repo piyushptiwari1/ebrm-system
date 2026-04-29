@@ -22,7 +22,7 @@ from __future__ import annotations
 try:
     import torch
     import torch.nn as nn
-    import torch.nn.functional as F
+    import torch.nn.functional as F  # noqa: N812
     from torch.nn.utils import spectral_norm
 except ImportError as exc:  # pragma: no cover
     raise ImportError(
@@ -52,7 +52,8 @@ class WeightedPooler(nn.Module):
             pooled = torch.bmm(weights.unsqueeze(1), hidden_states).squeeze(1)
             pooled_list.append(pooled)
         combined = torch.cat(pooled_list, dim=-1)
-        return self.norm(self.combine(combined))
+        out: torch.Tensor = self.norm(self.combine(combined))
+        return out
 
 
 class GatedProjector(nn.Module):
@@ -73,7 +74,8 @@ class GatedProjector(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         h = self.norm1(F.silu(self.gate(x)) * self.up(x))
         out = self.down(h)
-        return self.norm2(out + self.residual(x))
+        result: torch.Tensor = self.norm2(out + self.residual(x))
+        return result
 
 
 class CrossAttentionEnergy(nn.Module):
@@ -121,9 +123,10 @@ class CrossAttentionEnergy(nn.Module):
         e_local = self.local_energy(solution_state).squeeze(-1)
         e_global = (solution_state - problem_state).pow(2).mean(dim=-1)
         e_bilinear = self.bilinear(solution_state, problem_state).squeeze(-1)
-        return (
+        result: torch.Tensor = (
             self.lambda_cross * e_cross
             + self.lambda_local * e_local
             + self.lambda_global * e_global
             + self.lambda_bilinear * e_bilinear
         )
+        return result
