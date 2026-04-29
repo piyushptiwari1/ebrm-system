@@ -9,6 +9,13 @@ from ebrm_system.verifiers.dri import (
     VectorMorphism,
     commutes,
 )
+from ebrm_system.verifiers.ebrm_scorer import (
+    DEFAULT_REPO_ID as EBRM_DEFAULT_REPO_ID,
+)
+from ebrm_system.verifiers.ebrm_scorer import (
+    EBRMScorer,
+    EBRMSelection,
+)
 from ebrm_system.verifiers.exec_verifier import ExecVerifier
 from ebrm_system.verifiers.lean import LeanVerifier
 from ebrm_system.verifiers.prm import (
@@ -23,8 +30,11 @@ from ebrm_system.verifiers.routing import advice_chain, chain_for_intent
 from ebrm_system.verifiers.sympy_verifier import SymPyVerifier
 
 __all__ = [
+    "EBRM_DEFAULT_REPO_ID",
     "DRIVerifier",
     "Diagram",
+    "EBRMScorer",
+    "EBRMSelection",
     "ExactMorphism",
     "ExecVerifier",
     "GenerativePRMFn",

@@ -4,6 +4,94 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.30.0] - 2026-04-29
+
+### Added — verifier scaffolding, provisional API marker, opt-in Mem0-style memory ops
+
+v0.30 is a foundation release: it lands three independent, additive
+slices that prepare the codebase for the v0.31 v3-general verifier
+checkpoint. **Default behaviour for every public surface is unchanged
+from v0.29** — every new feature is opt-in.
+
+#### 1. PEP 411 provisional API marker (slice "A")
+
+The four legacy subpackages `ebrm_system.core`, `ebrm_system.inference`,
+`ebrm_system.memory`, and `ebrm_system.reward` are now marked as
+**experimental**. Importing any of them emits an
+`EBRMExperimentalWarning` (a `UserWarning` subclass) once per process,
+with a message pointing users at the stable surface
+(`ebrm_system.longmem`, `ebrm_system.verifiers`, `ebrm_system.voting`,
+`ebrm_system.intent`).
+
+This is a low-cost signal — no symbols moved, no imports broke. Users
+can silence the warning explicitly:
+
+```python
+import warnings
+from ebrm_system._experimental import EBRMExperimentalWarning
+warnings.filterwarnings("ignore", category=EBRMExperimentalWarning)
+```
+
+#### 2. EBRM verifier scaffolding (slice "B")
+
+New `ebrm_system.verifiers.ebrm_scorer.EBRMScorer` wraps the trained
+energy-head architecture (vendored under
+`ebrm_system.verifiers._ebrm_arch`) behind a small public API:
+
+* `EBRMScorer.from_pretrained(repo_id, ...)` — load weights + base LM.
+* `score_batch(question, candidates)` — return one energy per candidate.
+* `select_best(question, candidates)` — argmin of energies.
+
+A new benchmark harness, `benchmarks/gsm8k_verifier.py`, runs the
+3-way comparison `single` vs `majority@N` vs `ebrm@N` on GSM8K. The
+default `repo_id` will be flipped to the v3-general checkpoint in
+v0.31; v0.30 ships the scaffolding so downstream users can wire their
+own checkpoints today.
+
+#### 3. Opt-in Mem0-style memory operations (slice "C")
+
+`ebrm_system.longmem.memory_ops` adds a structured memory layer on
+top of the existing session-additive haystack:
+
+* `MemoryAction` (frozen): `ADD` / `UPDATE` / `DELETE` / `NOOP`.
+* `MemoryStore` (Protocol) + `InMemoryStore` default with deterministic
+  SHA-1 ids (identical ADDs collapse to one record).
+* `MemoryExtractor` (Protocol) + `LLMMemoryExtractor`. The extractor is
+  provider-agnostic: callers pass any `Callable[[str], str]` chat
+  function, so Azure / OpenAI / Ollama / OpenRouter all work via the
+  v0.29 multi-provider constructors with no new client code in this
+  module.
+
+`LongMemPipeline` gains two opt-in fields, `memory_store` and
+`memory_extractor`. When **both** are set, `add_session` runs the
+extractor and applies the returned actions; the applied subset is
+exposed on `_last_memory_actions` for inspection. When either is
+`None`, behaviour is **byte-identical** to v0.29.
+
+```python
+from ebrm_system.longmem import LongMemPipeline
+from ebrm_system.longmem.memory_ops import InMemoryStore, LLMMemoryExtractor
+
+pipe = LongMemPipeline.from_default()
+pipe.memory_store = InMemoryStore()
+pipe.memory_extractor = LLMMemoryExtractor(chat=my_chat_callable)
+pipe.add_session("s1", "2026-04-29", turns)  # now also updates memory
+```
+
+### Tooling / quality
+
+* 510 tests pass (up from 489 in v0.29), 93 % branch coverage.
+* `mypy --strict` clean across 41 source files.
+* `ruff check` clean.
+
+### Notes
+
+* The v3-general training run (Path C-thorough: GSM8K + MATH + ARC-Challenge
+  + LogiQA + CommonsenseQA + LLM-generated CoTs) is in flight on a
+  separate node. The resulting checkpoint will ship as v0.31 with
+  `EBRMScorer.from_pretrained` defaulting to it. v0.30 is independent
+  of that training run.
+
 ## [0.29.0] - 2026-04-28
 
 ### Added — public ``ebrm_system.longmem`` API + multi-provider support; self-consistency landed but documented as negative
