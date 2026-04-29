@@ -31,7 +31,7 @@ except ImportError as exc:  # pragma: no cover
     ) from exc
 
 
-class WeightedPooler(nn.Module):
+class WeightedPooler(nn.Module):  # type: ignore[misc]
     """Multi-head attention-weighted pooling over encoder hidden states."""
 
     def __init__(self, hidden_dim: int, num_heads: int = 4) -> None:
@@ -56,7 +56,7 @@ class WeightedPooler(nn.Module):
         return out
 
 
-class GatedProjector(nn.Module):
+class GatedProjector(nn.Module):  # type: ignore[misc]
     """Gated MLP projector with residual connection."""
 
     def __init__(self, hidden_dim: int, latent_dim: int) -> None:
@@ -78,7 +78,7 @@ class GatedProjector(nn.Module):
         return result
 
 
-class CrossAttentionEnergy(nn.Module):
+class CrossAttentionEnergy(nn.Module):  # type: ignore[misc]
     """Multi-component energy: cross-attn + local + global L2 + bilinear."""
 
     def __init__(self, latent_dim: int, num_heads: int = 8, hidden_dim: int = 384) -> None:
