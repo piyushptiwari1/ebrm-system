@@ -15,8 +15,8 @@ end-to-end reasoner:
 
 The encoder, decoder, and energy function are injected as callables so this
 module is torch-optional and unit-testable on CPU. In production they wrap
-the EBRM v2 heads (pooler, projector, energy_head, answer_decoder) loaded
-from `piyushptiwari/ebrm-v2-qwen3-4b` on Hugging Face.
+the EBRM heads (pooler, projector, energy_head, answer_decoder) loaded
+from `piyushptiwari/ebrm-v4-qwen3-4b` on Hugging Face.
 
 The whole thing is deterministic given a seed and pure-Python in its control
 flow. No global state.

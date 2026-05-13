@@ -4,6 +4,41 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.31.0] - 2026-05-13
+
+### Changed — default verifier checkpoint promoted to v4 (honest release)
+
+`EBRMScorer.from_pretrained()` now defaults to
+[`piyushptiwari/ebrm-v4-qwen3-4b`](https://huggingface.co/piyushptiwari/ebrm-v4-qwen3-4b)
+(was: `ebrm-v2-qwen3-4b`). The v4 checkpoint is a heads-only variant of v2
+further trained with hard-negative mining (6,273 pairs).
+
+**Honest benchmark summary** (best-of-k vs. baselines, all at k=6):
+
+| Bench         | n   | single-shot | majority @k | v3-best | **v4-best** |
+| ------------- | --- | ----------- | ----------- | ------- | ----------- |
+| GSM8K         | 150 | 0.933       | **0.947**   | 0.940   | 0.933       |
+| BBH (4 tasks) | 182 | 0.923       | **0.962**   | 0.923   | 0.951       |
+
+v4 gives **+2.8 pp over v3 on BBH** but **does not beat self-consistency
+majority voting at k=6** on either benchmark. It is published as a
+research artifact and as a transfer-learning starting point — not as a
+drop-in runtime accuracy win over majority voting. See the v4 model card
+for full methodology, training recipe, and known limitations.
+
+The previous default `piyushptiwari/ebrm-v2-qwen3-4b` remains available
+and is now marked as superseded on its model card; pass
+`repo_id="piyushptiwari/ebrm-v2-qwen3-4b"` to pin it.
+
+No code path or public API changed. The architecture (`_ebrm_arch.py`)
+is identical across v2/v3/v4 — only the trained head weights differ.
+
+### Internal
+
+- Module docstrings in `verifiers.ebrm_scorer`, `verifiers._ebrm_arch`,
+  `core.__init__`, `core.reasoner`, and `scripts/demo_e2e.py` updated to
+  reference v4 as the default checkpoint.
+
 ## [0.30.0] - 2026-04-29
 
 ### Added — verifier scaffolding, provisional API marker, opt-in Mem0-style memory ops

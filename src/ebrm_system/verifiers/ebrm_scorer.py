@@ -6,9 +6,10 @@ energy = better candidate. Used to re-rank N candidate solutions sampled
 from any LLM (gpt-4o-mini, Qwen, vLLM, …) without requiring the full
 Langevin inference loop.
 
-Default checkpoint: ``piyushptiwari/ebrm-v2-qwen3-4b`` (math-only training:
-GSM8K + MATH + 5k synthetic). A future ``ebrm-v3-general`` checkpoint
-(BBH + StrategyQA + LogiQA + …) will be a drop-in replacement.
+Default checkpoint: ``piyushptiwari/ebrm-v4-qwen3-4b`` (hard-negative trained
+on top of v2; +2.8 pp over v3 on BBH best-of-6, ties single-shot on GSM8K, does
+not beat majority voting at k=6). See the model card for the full bench table.
+Earlier ``ebrm-v2-qwen3-4b`` remains available for reproducibility.
 
 Example
 -------
@@ -29,7 +30,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     import torch
 
-DEFAULT_REPO_ID = "piyushptiwari/ebrm-v2-qwen3-4b"
+DEFAULT_REPO_ID = "piyushptiwari/ebrm-v4-qwen3-4b"
 DEFAULT_BASE_MODEL = "Qwen/Qwen3-4B"
 DEFAULT_LATENT_DIM = 768
 DEFAULT_MAX_LEN = 512

@@ -2,8 +2,9 @@
 
 This module mirrors the trainable heads from the upstream training repo
 (``piyushptiwari/ebrm`` → ``ebrm/model.py``) so that checkpoints saved as
-``ebrm_inference.pt`` (and uploaded to ``piyushptiwari/ebrm-v2-qwen3-4b``)
-load cleanly via ``state_dict``.
+``ebrm_inference.pt`` (uploaded to ``piyushptiwari/ebrm-v4-qwen3-4b`` —
+default — and the legacy ``piyushptiwari/ebrm-v2-qwen3-4b``) load cleanly
+via ``state_dict``.
 
 Only the modules required for **scoring** are re-implemented here:
 

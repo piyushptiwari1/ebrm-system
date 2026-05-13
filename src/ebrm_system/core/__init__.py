@@ -9,8 +9,8 @@ The :class:`HierarchicalLatentReasoner` composes the rest of `ebrm-system`
 end-to-end pipeline. The encoder/decoder/energy callables are injected so
 this module is torch-optional and unit-testable on CPU.
 
-For the real EBRM v2 weights, load them from
-    https://huggingface.co/piyushptiwari/ebrm-v2-qwen3-4b
+For the real EBRM v4 weights (current default), load them from
+    https://huggingface.co/piyushptiwari/ebrm-v4-qwen3-4b
 and adapt them to the :data:`EncoderFn`, :data:`DecoderFn`, :data:`EnergyFn`
 contracts.
 """
