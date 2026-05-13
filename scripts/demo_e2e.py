@@ -21,7 +21,7 @@ from ebrm_system.inference.turboquant_attention import quantize_kv_torch
 from ebrm_system.intent import Intent
 from ebrm_system.verifiers.routing import chain_for_intent
 
-MODEL_ID = "piyushptiwari/ebrm-v2-qwen3-4b"
+MODEL_ID = "piyushptiwari/ebrm-v4-qwen3-4b"
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 N_CANDIDATES = 32
 MAX_NEW_TOKENS = 160
